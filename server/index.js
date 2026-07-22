@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import fs from 'fs';
+import os from 'os';
 
 dotenv.config();
 
@@ -18,7 +19,7 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const JWT_SECRET = process.env.JWT_SECRET || 'chatbot-secret-key-2024';
 
-const USER_DATA_DIR = path.join(process.env.APPDATA || process.env.HOME || process.env.USERPROFILE || '/tmp', 'deepseek-chat');
+const USER_DATA_DIR = path.join(os.tmpdir(), 'deepseek-chat-' + process.env.USERNAME);
 const UPLOADS_DIR = path.join(USER_DATA_DIR, 'uploads');
 const DB_FILE = path.join(USER_DATA_DIR, 'db.json');
 
@@ -35,20 +36,27 @@ function ensureDir(dir) {
 ensureDir(USER_DATA_DIR);
 ensureDir(UPLOADS_DIR);
 
+let dbCache = null;
+
 function loadDB() {
+  if (dbCache) return dbCache;
   try {
     if (!fs.existsSync(DB_FILE)) {
-      return { users: [], sessions: [], messages: [], nextUserId: 1, nextSessionId: 1, nextMessageId: 1 };
+      dbCache = { users: [], sessions: [], messages: [], nextUserId: 1, nextSessionId: 1, nextMessageId: 1 };
+      return dbCache;
     }
     const content = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(content);
+    dbCache = JSON.parse(content);
+    return dbCache;
   } catch (err) {
     console.error('加载数据库失败:', err.message);
-    return { users: [], sessions: [], messages: [], nextUserId: 1, nextSessionId: 1, nextMessageId: 1 };
+    dbCache = { users: [], sessions: [], messages: [], nextUserId: 1, nextSessionId: 1, nextMessageId: 1 };
+    return dbCache;
   }
 }
 
 function saveDB(db) {
+  dbCache = db;
   try {
     ensureDir(USER_DATA_DIR);
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), { encoding: 'utf-8' });
