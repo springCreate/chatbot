@@ -1,0 +1,35 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# 构建产物
+client/dist/
+*.local
+
+# 环境变量（含密钥，切勿提交）
+.env
+.env.local
+.env.*.local
+
+# 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log.log*
+*.log
+
+# 编辑器
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# Trae 文档
+.trae/
