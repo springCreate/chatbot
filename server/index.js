@@ -18,21 +18,21 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const JWT_SECRET = process.env.JWT_SECRET || 'chatbot-secret-key-2024';
 
-const DATA_DIR = path.join(__dirname, 'data');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+const USER_DATA_DIR = path.join(process.env.APPDATA || process.env.HOME || process.env.USERPROFILE || '/tmp', 'deepseek-chat');
+const UPLOADS_DIR = path.join(USER_DATA_DIR, 'uploads');
+const DB_FILE = path.join(USER_DATA_DIR, 'db.json');
 
 function ensureDir(dir) {
   try {
     if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+      fs.mkdirSync(dir, { recursive: true });
     }
   } catch (err) {
     console.error('创建目录失败:', dir, err.message);
   }
 }
 
-ensureDir(DATA_DIR);
+ensureDir(USER_DATA_DIR);
 ensureDir(UPLOADS_DIR);
 
 function loadDB() {
@@ -50,8 +50,8 @@ function loadDB() {
 
 function saveDB(db) {
   try {
-    ensureDir(DATA_DIR);
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), { encoding: 'utf-8', mode: 0o644 });
+    ensureDir(USER_DATA_DIR);
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), { encoding: 'utf-8' });
     return true;
   } catch (err) {
     console.error('保存数据库失败:', err.message);
@@ -361,6 +361,7 @@ app.get(/^\/(?!api).*/, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`✓ 服务已启动: http://localhost:${PORT}`);
+  console.log(`  数据目录: ${USER_DATA_DIR}`);
   if (!DEEPSEEK_API_KEY) {
     console.warn('⚠ 警告: 未配置 DEEPSEEK_API_KEY，请在 server/.env 中设置');
   }
