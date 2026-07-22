@@ -4,13 +4,19 @@ import { useAuth } from './composables/useChat.js'
 import Login from './components/Login.vue'
 import Chat from './components/Chat.vue'
 
-const { user, tokenRef, login, register, logout, getToken } = useAuth()
+const { user, login, register, logout, getToken, fetchUser } = useAuth()
 const showLogin = ref(true)
+const loading = ref(true)
 
-onMounted(() => {
+onMounted(async () => {
+  loading.value = true
   if (getToken()) {
-    showLogin.value = false
+    const success = await fetchUser()
+    showLogin.value = !success
+  } else {
+    showLogin.value = true
   }
+  loading.value = false
 })
 
 async function handleLogin(username, password) {
@@ -38,8 +44,11 @@ function handleLogout() {
 
 <template>
   <div class="app" :class="{ 'dark': true }">
+    <div v-if="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
     <Login
-      v-if="showLogin"
+      v-else-if="showLogin"
       @login="handleLogin"
       @register="handleRegister"
     />
@@ -106,6 +115,26 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
 

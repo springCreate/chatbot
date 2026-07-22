@@ -18,7 +18,6 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const JWT_SECRET = process.env.JWT_SECRET || 'chatbot-secret-key-2024';
 
-// 文件存储路径
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
@@ -26,7 +25,6 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-// 简单 JSON 数据库
 function loadDB() {
   try {
     return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
@@ -55,7 +53,6 @@ const upload = multer({
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// 鉴权中间件
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -68,12 +65,10 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', hasKey: !!DEEPSEEK_API_KEY });
 });
 
-// 注册
 app.post('/api/register', async (req, res) => {
   const { username, password, email } = req.body;
   if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -100,7 +95,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// 登录
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -116,7 +110,13 @@ app.post('/api/login', async (req, res) => {
   res.json({ token, username: user.username, userId: user.id });
 });
 
-// 获取会话列表
+app.get('/api/me', authenticateToken, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+  res.json({ id: user.id, username: user.username, email: user.email });
+});
+
 app.get('/api/sessions', authenticateToken, (req, res) => {
   const db = loadDB();
   const sessions = db.sessions
@@ -125,7 +125,6 @@ app.get('/api/sessions', authenticateToken, (req, res) => {
   res.json(sessions);
 });
 
-// 创建会话
 app.post('/api/sessions', authenticateToken, (req, res) => {
   const { title } = req.body;
   const db = loadDB();
@@ -141,7 +140,6 @@ app.post('/api/sessions', authenticateToken, (req, res) => {
   res.json(newSession);
 });
 
-// 更新会话标题
 app.put('/api/sessions/:id', authenticateToken, (req, res) => {
   const { title } = req.body;
   const db = loadDB();
@@ -154,7 +152,6 @@ app.put('/api/sessions/:id', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// 删除会话
 app.delete('/api/sessions/:id', authenticateToken, (req, res) => {
   const sessionId = parseInt(req.params.id);
   const db = loadDB();
@@ -167,7 +164,6 @@ app.delete('/api/sessions/:id', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// 获取会话消息
 app.get('/api/sessions/:id/messages', authenticateToken, (req, res) => {
   const db = loadDB();
   const sessionId = parseInt(req.params.id);
@@ -180,7 +176,6 @@ app.get('/api/sessions/:id/messages', authenticateToken, (req, res) => {
   res.json(messages);
 });
 
-// 文件上传
 app.post('/api/upload', authenticateToken, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '请选择文件' });
   
@@ -203,7 +198,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
   }
 });
 
-// 流式聊天接口
 app.post('/api/chat', authenticateToken, async (req, res) => {
   const controller = new AbortController();
   res.on("close", () => { if (!res.writableEnded) controller.abort(); });
@@ -223,7 +217,6 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'messages 参数无效' });
     }
 
-    // 保存用户消息
     const db = loadDB();
     const userMsg = messages[messages.length - 1];
     if (userMsg && userMsg.role === 'user') {
@@ -237,7 +230,6 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
       const session = db.sessions.find(s => s.id === session_id);
       if (session) {
         session.updated_at = new Date().toISOString();
-        // 如果是新会话且标题是默认的，用第一条消息作为标题
         if (session.title === '新会话' && userMsg.content.length > 0) {
           session.title = userMsg.content.substring(0, 30) + (userMsg.content.length > 30 ? '...' : '');
         }
@@ -245,7 +237,6 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
       saveDB(db);
     }
 
-    // 设置 SSE 响应头
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -304,7 +295,6 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
       }
     }
 
-    // 保存 AI 回复
     if (fullContent) {
       const db2 = loadDB();
       db2.messages.push({
@@ -331,7 +321,6 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
   }
 });
 
-// 生产环境托管前端静态文件
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
 app.get(/^\/(?!api).*/, (req, res) => {

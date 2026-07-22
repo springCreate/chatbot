@@ -34,6 +34,28 @@ export function useAuth() {
     return { success: res.ok, error: data.error }
   }
   
+  async function fetchUser() {
+    if (!token) {
+      user.value = null
+      return false
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        user.value = await res.json()
+        return true
+      } else {
+        user.value = null
+        return false
+      }
+    } catch {
+      user.value = null
+      return false
+    }
+  }
+  
   function logout() {
     token = null
     tokenRef.value = null
@@ -45,7 +67,7 @@ export function useAuth() {
     return token
   }
   
-  return { user, tokenRef, login, register, logout, getToken }
+  return { user, tokenRef, login, register, logout, getToken, fetchUser }
 }
 
 export function useChat() {
