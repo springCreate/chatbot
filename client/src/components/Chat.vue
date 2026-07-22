@@ -8,9 +8,10 @@ import SettingsPanel from './SettingsPanel.vue'
 
 const props = defineProps({
   user: { type: Object, required: true },
+  theme: { type: String, default: 'dark' },
 })
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits(['logout', 'toggleTheme'])
 
 const { messages, loading, error, sendMessage, stop, clearMessages, loadMessages } = useChat()
 const { sessions, fetchSessions, createSession, updateSession, deleteSession } = useSessions()
@@ -22,7 +23,6 @@ const model = ref('deepseek-chat')
 const temperature = ref(0.7)
 const maxTokens = ref(4096)
 const sidebarOpen = ref(true)
-const theme = ref('dark')
 
 const models = [
   { value: 'deepseek-chat', label: 'DeepSeek-V3' },
@@ -97,11 +97,6 @@ function handleClear() {
   }
 }
 
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  document.documentElement.setAttribute('data-theme', theme.value)
-}
-
 onMounted(async () => {
   await fetchSessions()
   if (sessions.value.length > 0) {
@@ -126,7 +121,7 @@ onMounted(async () => {
           新会话
         </button>
       </div>
-      
+
       <SessionList
         :sessions="sessions"
         :current="currentSession"
@@ -134,7 +129,7 @@ onMounted(async () => {
         @delete="handleDeleteSession"
         @rename="handleRenameSession"
       />
-      
+
       <div class="sidebar-footer">
         <button class="user-btn" @click="emit('logout')">
           <span class="avatar">{{ user.username[0] }}</span>
@@ -146,7 +141,7 @@ onMounted(async () => {
         </button>
       </div>
     </aside>
-    
+
     <main class="main">
       <header class="topbar">
         <button class="toggle-btn" @click="sidebarOpen = !sidebarOpen">
@@ -154,11 +149,11 @@ onMounted(async () => {
             <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/>
           </svg>
         </button>
-        
+
         <div class="session-info" v-if="currentSession">
           <span class="session-title">{{ currentSession.title }}</span>
         </div>
-        
+
         <div class="actions">
           <SettingsPanel
             v-model:model="model"
@@ -166,22 +161,22 @@ onMounted(async () => {
             v-model:maxTokens="maxTokens"
             :models="models"
             :theme="theme"
-            @toggleTheme="toggleTheme"
+            @toggleTheme="emit('toggleTheme')"
           />
-          
+
           <button class="clear-btn" @click="handleClear" :disabled="loading">
             清空
           </button>
         </div>
       </header>
-      
+
       <div class="chat-area" ref="scrollRef">
         <div v-if="!currentSession" class="empty">
           <div class="empty-icon">📭</div>
           <h2>暂无会话</h2>
           <p>点击左侧"新会话"开始聊天</p>
         </div>
-        
+
         <div v-else-if="messages.length === 0" class="welcome">
           <div class="welcome-icon">💬</div>
           <h2>开始与 DeepSeek 对话</h2>
@@ -193,17 +188,17 @@ onMounted(async () => {
             <button class="tip-chip" @click="handleSend('解释什么是闭包')">解释闭包</button>
           </div>
         </div>
-        
+
         <ChatMessage
           v-for="(msg, i) in messages"
           :key="msg.id || i"
           :message="msg"
           :streaming="loading && i === messages.length - 1 && msg.role === 'assistant'"
         />
-        
+
         <div v-if="error" class="error-tip">⚠ {{ error }}</div>
       </div>
-      
+
       <footer class="footer">
         <ChatInput
           :loading="loading"
@@ -464,11 +459,11 @@ onMounted(async () => {
     width: 260px;
     transform: translateX(-100%);
   }
-  
+
   .sidebar.open {
     transform: translateX(0);
   }
-  
+
   .toggle-btn {
     display: block;
   }

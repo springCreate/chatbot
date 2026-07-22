@@ -7,9 +7,16 @@ import Chat from './components/Chat.vue'
 const { user, login, register, logout, getToken, fetchUser } = useAuth()
 const showLogin = ref(true)
 const loading = ref(true)
+const theme = ref('dark')
 
 onMounted(async () => {
   loading.value = true
+  const savedTheme = localStorage.getItem('chatbot_theme')
+  if (savedTheme) {
+    theme.value = savedTheme
+  }
+  document.documentElement.setAttribute('data-theme', theme.value)
+  
   if (getToken()) {
     const success = await fetchUser()
     showLogin.value = !success
@@ -40,10 +47,16 @@ function handleLogout() {
   logout()
   showLogin.value = true
 }
+
+function toggleTheme() {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  localStorage.setItem('chatbot_theme', theme.value)
+  document.documentElement.setAttribute('data-theme', theme.value)
+}
 </script>
 
 <template>
-  <div class="app" :class="{ 'dark': true }">
+  <div class="app" :class="{ 'dark': theme === 'dark', 'light': theme === 'light' }">
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
     </div>
@@ -55,7 +68,9 @@ function handleLogout() {
     <Chat
       v-else
       :user="user"
+      :theme="theme"
       @logout="handleLogout"
+      @toggleTheme="toggleTheme"
     />
   </div>
 </template>

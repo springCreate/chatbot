@@ -22,19 +22,41 @@ const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+function ensureDir(dir) {
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+    }
+  } catch (err) {
+    console.error('创建目录失败:', dir, err.message);
+  }
+}
+
+ensureDir(DATA_DIR);
+ensureDir(UPLOADS_DIR);
 
 function loadDB() {
   try {
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-  } catch {
+    if (!fs.existsSync(DB_FILE)) {
+      return { users: [], sessions: [], messages: [], nextUserId: 1, nextSessionId: 1, nextMessageId: 1 };
+    }
+    const content = fs.readFileSync(DB_FILE, 'utf-8');
+    return JSON.parse(content);
+  } catch (err) {
+    console.error('加载数据库失败:', err.message);
     return { users: [], sessions: [], messages: [], nextUserId: 1, nextSessionId: 1, nextMessageId: 1 };
   }
 }
 
 function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  try {
+    ensureDir(DATA_DIR);
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), { encoding: 'utf-8', mode: 0o644 });
+    return true;
+  } catch (err) {
+    console.error('保存数据库失败:', err.message);
+    return false;
+  }
 }
 
 const upload = multer({
@@ -88,7 +110,9 @@ app.post('/api/register', async (req, res) => {
       created_at: new Date().toISOString(),
     };
     db.users.push(newUser);
-    saveDB(db);
+    if (!saveDB(db)) {
+      return res.status(500).json({ error: '保存用户失败，请检查权限' });
+    }
     res.status(201).json({ id: newUser.id, username: newUser.username });
   } catch (err) {
     res.status(500).json({ error: '注册失败' });
@@ -136,7 +160,9 @@ app.post('/api/sessions', authenticateToken, (req, res) => {
     updated_at: new Date().toISOString(),
   };
   db.sessions.push(newSession);
-  saveDB(db);
+  if (!saveDB(db)) {
+    return res.status(500).json({ error: '保存会话失败，请检查权限' });
+  }
   res.json(newSession);
 });
 
@@ -148,7 +174,9 @@ app.put('/api/sessions/:id', authenticateToken, (req, res) => {
   
   session.title = title;
   session.updated_at = new Date().toISOString();
-  saveDB(db);
+  if (!saveDB(db)) {
+    return res.status(500).json({ error: '更新会话失败，请检查权限' });
+  }
   res.json({ success: true });
 });
 
@@ -160,7 +188,9 @@ app.delete('/api/sessions/:id', authenticateToken, (req, res) => {
   
   db.sessions.splice(sessionIdx, 1);
   db.messages = db.messages.filter(m => m.session_id !== sessionId);
-  saveDB(db);
+  if (!saveDB(db)) {
+    return res.status(500).json({ error: '删除会话失败，请检查权限' });
+  }
   res.json({ success: true });
 });
 
