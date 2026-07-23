@@ -11,13 +11,66 @@ const isUser = computed(() => props.message.role === 'user')
 const html = computed(() =>
   isUser.value ? '' : renderMarkdown(props.message.content)
 )
+
+const attachments = computed(() => props.message.attachments || [])
+
+function formatSize(bytes) {
+  if (!bytes) return ''
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+function getFileIcon(type) {
+  const icons = {
+    PDF: '📕',
+    Word: '📘',
+    Excel: '📗',
+    CSV: '📓',
+    Text: '📄',
+    Markdown: '📝',
+    Image: '🖼️',
+    PNG: '🖼️',
+    JPEG: '🖼️',
+    GIF: '🖼️',
+    WebP: '🖼️',
+    BMP: '🖼️',
+    Unknown: '📁',
+  }
+  return icons[type] || icons.Unknown
+}
 </script>
 
 <template>
   <div class="msg" :class="isUser ? 'user' : 'ai'">
     <div class="avatar">{{ isUser ? '🧑' : '🤖' }}</div>
     <div class="bubble">
-      <template v-if="isUser">{{ message.content }}</template>
+      <template v-if="isUser">
+        <div v-if="message.content" class="text-content">{{ message.content }}</div>
+        <div v-if="attachments.length > 0" class="attachments-list">
+          <div
+            v-for="(attach, idx) in attachments"
+            :key="idx"
+            class="attachment-card"
+            :class="{ image: attach.type === 'Image' || attach.type === 'PNG' || attach.type === 'JPEG' || attach.type === 'GIF' || attach.type === 'WebP' || attach.type === 'BMP' }"
+          >
+            <div class="attach-icon">{{ getFileIcon(attach.type) }}</div>
+            <div class="attach-info">
+              <span class="attach-name" :title="attach.name">{{ attach.name }}</span>
+              <span class="attach-meta">{{ attach.type }} · {{ formatSize(attach.size) }}</span>
+            </div>
+            <div v-if="attach.images && attach.images.length > 0" class="attach-images">
+              <img
+                v-for="(img, imgIdx) in attach.images"
+                :key="imgIdx"
+                :src="img.data"
+                class="attach-image"
+                :alt="img.name"
+              />
+            </div>
+          </div>
+        </div>
+      </template>
       <template v-else>
         <div v-if="message.content" class="md" v-html="html"></div>
         <span v-if="streaming && !message.content" class="dots">
@@ -69,7 +122,71 @@ const html = computed(() =>
   border-bottom-left-radius: 4px;
 }
 
-/* Markdown 内容样式 */
+.text-content {
+  margin-bottom: 10px;
+}
+
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user .attachment-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.attach-icon {
+  font-size: 24px;
+}
+
+.attach-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.attach-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-meta {
+  display: block;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.attach-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.attach-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 6px;
+  object-fit: contain;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .md :deep(p) {
   margin: 0 0 8px;
 }

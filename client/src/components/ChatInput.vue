@@ -3,6 +3,8 @@ import { ref, nextTick, computed } from 'vue'
 import { recognizeImage } from '../utils/ocr.js'
 
 const emit = defineEmits(['send', 'upload'])
+
+
 const props = defineProps({
   loading: { type: Boolean, default: false },
 })
@@ -106,6 +108,8 @@ async function handleFileSelect(e) {
       if (a) {
         a.status = 'done'
         a.content = result.content
+        a.fileType = result.fileType
+        a.images = result.images || []
       }
     } catch (err) {
       const a = attachments.value.find((x) => x.id === attachId)

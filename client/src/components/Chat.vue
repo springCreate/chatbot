@@ -179,9 +179,9 @@ onMounted(async () => {
           <p>支持流式输出 · Markdown 渲染 · 文件上传 · 图片OCR</p>
           <div class="tips">
             <span class="tip">试试问我：</span>
-            <button class="tip-chip" @click="handleSend('用一句话介绍你自己')">介绍你自己</button>
-            <button class="tip-chip" @click="handleSend('写一个快速排序的 Python 实现')">快速排序代码</button>
-            <button class="tip-chip" @click="handleSend('解释什么是闭包')">解释闭包</button>
+            <button class="tip-chip" @click="handleSend({ text: '用一句话介绍你自己', attachments: [] })">介绍你自己</button>
+            <button class="tip-chip" @click="handleSend({ text: '写一个快速排序的 Python 实现', attachments: [] })">快速排序代码</button>
+            <button class="tip-chip" @click="handleSend({ text: '解释什么是闭包', attachments: [] })">解释闭包</button>
           </div>
         </div>
 

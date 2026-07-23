@@ -240,7 +240,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     if (userMsg && userMsg.role === 'user') {
       db.messages.push({ id: db.nextMessageId++, session_id, role: 'user', content: userMsg.content, created_at: new Date().toISOString() });
       const session = db.sessions.find(function(s) { return s.id === session_id; });
-      if (session) { session.updated_at = new Date().toISOString(); if (['New Session', '新会话'].includes(session.title)) session.title = userMsg.content.substring(0, 30) + (userMsg.content.length > 30 ? '...' : ''); }
+      if (session) { session.updated_at = new Date().toISOString(); if (['New Session', '新会话'].includes(session.title)) { const cleanContent = userMsg.content.replace(/\[附件:.+?\]/g, '').trim(); session.title = cleanContent.substring(0, 30) + (cleanContent.length > 30 ? '...' : '') || '新会话'; } }
       saveDB(db);
     }
     res.setHeader('Content-Type', 'text/event-stream');
@@ -254,7 +254,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '', fullContent = '';
     while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (!t || !t.startsWith('data:')) continue; const d = t.slice(5).trim(); if (d === '[DONE]') { res.write('data: [DONE]\n\n'); continue; } try { const p = JSON.parse(d); const c = p.choices?.[0]?.delta?.content; if (c) { fullContent += c; res.write('data: ' + JSON.stringify({ content: c }) + '\n\n'); } } catch {} } }
-    if (fullContent) { const db2 = loadDB(); db2.messages.push({ id: db2.nextMessageId++, session_id, role: 'assistant', content: fullContent, created_at: new Date().toISOString() }); saveDB(db2); }
+    if (fullContent) { const db2 = loadDB(); db2.messages.push({ id: db2.nextMessageId++, session_id, role: 'assistant', content: fullContent, attachments: [], created_at: new Date().toISOString() }); saveDB(db2); }
     res.end();
   } catch (err) { if (err.name === 'AbortError') { res.write('data: [DONE]\n\n'); return res.end(); } try { res.write('data: ' + JSON.stringify({ error: err.message }) + '\n\n'); } catch {} res.end(); }
 });
