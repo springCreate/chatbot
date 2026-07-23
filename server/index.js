@@ -233,7 +233,7 @@ app.post('/api/export/docx', authenticateToken, async (req, res) => {
     const { content, filename } = req.body;
     if (!content) return res.status(400).json({ error: 'Content is required' });
 
-    const safeFilename = (filename || 'document').replace(/[\\/:*?"<>|]/g, '_').substring(0, 50);
+    const safeFilename = (filename || 'document').replace(/[\x00-\x1F\x7F\\/:*?"<>|]/g, '_').trim().substring(0, 50);
 
     const lines = content.split('\n');
     const paragraphs = [];
