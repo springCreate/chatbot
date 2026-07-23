@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -233,12 +233,14 @@ app.post('/api/export/docx', authenticateToken, async (req, res) => {
     const { content, filename } = req.body;
     if (!content) return res.status(400).json({ error: 'Content is required' });
 
+    const safeFilename = (filename || 'document').replace(/[\\/:*?"<>|]/g, '_').substring(0, 50);
+
     const lines = content.split('\n');
     const paragraphs = [];
 
     paragraphs.push(new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      children: [new TextRun(filename || 'AI Chat Document')],
+      children: [new TextRun(safeFilename || 'AI Chat Document')],
       alignment: AlignmentType.CENTER,
     }));
 
@@ -279,7 +281,8 @@ app.post('/api/export/docx', authenticateToken, async (req, res) => {
     const buffer = await Packer.toBuffer(doc);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + (filename || 'document') + '.docx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + safeFilename + '.docx"');
+    res.setHeader('Content-Length', buffer.length);
     res.send(buffer);
   } catch (err) {
     console.error('Export error:', err);
