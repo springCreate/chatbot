@@ -240,7 +240,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     if (userMsg && userMsg.role === 'user') {
       db.messages.push({ id: db.nextMessageId++, session_id, role: 'user', content: userMsg.content, created_at: new Date().toISOString() });
       const session = db.sessions.find(function(s) { return s.id === session_id; });
-      if (session) { session.updated_at = new Date().toISOString(); if (session.title === 'New Session') session.title = userMsg.content.substring(0, 30) + (userMsg.content.length > 30 ? '...' : ''); }
+      if (session) { session.updated_at = new Date().toISOString(); if (['New Session', '新会话'].includes(session.title)) session.title = userMsg.content.substring(0, 30) + (userMsg.content.length > 30 ? '...' : ''); }
       saveDB(db);
     }
     res.setHeader('Content-Type', 'text/event-stream');

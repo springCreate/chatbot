@@ -46,6 +46,7 @@ async function handleSend(text) {
     temperature: temperature.value,
     maxTokens: maxTokens.value,
   })
+  fetchSessions()
 }
 
 async function handleCreateSession() {
@@ -486,5 +487,6 @@ onMounted(async () => {
 
   }
 </style>
+
 
 
