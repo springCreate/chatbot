@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #0b1020;
   --bg-soft: #131a2e;
   --panel: #161f38;
@@ -10,10 +10,26 @@
   --user-bubble: #0e7490;
   --ai-bubble: #1c2740;
   --danger: #ef4444;
+  --success: #22c55e;
   --radius: 14px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Microsoft YaHei', sans-serif;
   --mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg-soft: #f1f5f9;
+  --panel: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-dim: #94a3b8;
+  --accent: #0891b2;
+  --accent-soft: rgba(8, 145, 178, 0.1);
+  --user-bubble: #0891b2;
+  --ai-bubble: #f1f5f9;
+  --danger: #dc2626;
+  --success: #16a34a;
 }
 
 * {
@@ -33,6 +49,7 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 #app {

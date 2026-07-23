@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted } from 'vue'
 import { useAuth } from './composables/useChat.js'
 import Login from './components/Login.vue'
@@ -9,13 +9,17 @@ const showLogin = ref(true)
 const loading = ref(true)
 const theme = ref('dark')
 
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t)
+}
+
 onMounted(async () => {
   loading.value = true
   const savedTheme = localStorage.getItem('chatbot_theme')
   if (savedTheme) {
     theme.value = savedTheme
   }
-  document.documentElement.setAttribute('data-theme', theme.value)
+  applyTheme(theme.value)
   
   if (getToken()) {
     const success = await fetchUser()
@@ -51,12 +55,12 @@ function handleLogout() {
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
   localStorage.setItem('chatbot_theme', theme.value)
-  document.documentElement.setAttribute('data-theme', theme.value)
+  applyTheme(theme.value)
 }
 </script>
 
 <template>
-  <div class="app" :class="{ 'dark': theme === 'dark', 'light': theme === 'light' }">
+  <div class="app">
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
     </div>
@@ -76,56 +80,6 @@ function toggleTheme() {
 </template>
 
 <style>
-:root {
-  --bg: #0a0a0f;
-  --bg-soft: #111118;
-  --panel: #1a1a24;
-  --border: #2a2a3a;
-  --text: #e4e4e7;
-  --text-dim: #71717a;
-  --accent: #6366f1;
-  --accent-soft: rgba(99, 102, 241, 0.1);
-  --user-bubble: #6366f1;
-  --ai-bubble: #1e1e2a;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --radius: 12px;
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --mono: 'Fira Code', 'Monaco', 'Consolas', monospace;
-}
-
-[data-theme="light"] {
-  --bg: #f8fafc;
-  --bg-soft: #f1f5f9;
-  --panel: #ffffff;
-  --border: #e2e8f0;
-  --text: #1e293b;
-  --text-dim: #94a3b8;
-  --accent: #4f46e5;
-  --accent-soft: rgba(79, 70, 229, 0.1);
-  --user-bubble: #4f46e5;
-  --ai-bubble: #f1f5f9;
-  --danger: #dc2626;
-  --success: #16a34a;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
-#app {
-  min-height: 100vh;
-}
-
 .app {
   min-height: 100vh;
   display: flex;
@@ -152,4 +106,3 @@ body {
   to { transform: rotate(360deg); }
 }
 </style>
-

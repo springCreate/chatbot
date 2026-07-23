@@ -37,10 +37,6 @@ async function scrollToBottom() {
 }
 
 watch(() => messages.value.length, scrollToBottom)
-watch(
-  () => messages.value.map((m) => m.content).join(''),
-  scrollToBottom
-)
 
 async function handleSend(text) {
   if (!currentSession.value) {
@@ -81,19 +77,60 @@ async function handleRenameSession(sessionId, title) {
   await updateSession(sessionId, title)
 }
 
-async function handleUpload(file) {
+async function handleUpload(file, resolve, reject) {
   try {
     const result = await uploadFile(file)
-    const content = `请分析以下文件内容：\n\n${result.content}`
-    handleSend(content)
+    resolve(result)
   } catch (err) {
-    error.value = err.message
+    reject(err)
   }
 }
 
 function handleClear() {
   if (currentSession.value) {
     clearMessages()
+  }
+}
+
+async function exportToWord() {
+  if (!currentSession.value || messages.value.length === 0) {
+    alert('暂无内容可导出')
+    return
+  }
+
+  const content = messages.value.map(m => {
+    const prefix = m.role === 'user' ? '### 用户：' : '### AI：'
+    return prefix + m.content
+  }).join('\n\n')
+
+  try {
+    const token = localStorage.getItem('chatbot_token')
+    const API_BASE = import.meta.env.DEV ? 'http://localhost:3000' : ''
+    const res = await fetch(API_BASE + '/api/export/docx', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token,
+      },
+      body: JSON.stringify({ content, filename: currentSession.value.title }),
+    })
+
+    if (res.ok) {
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = currentSession.value.title + '.docx'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } else {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error || '导出失败')
+    }
+  } catch (err) {
+    alert('导出失败：' + err.message)
   }
 }
 
@@ -155,6 +192,17 @@ onMounted(async () => {
         </div>
 
         <div class="actions">
+          <button class="export-btn" @click="exportToWord" title="导出Word">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="14 2 14 8 20 8" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="16" y1="13" x2="8" y2="13" stroke-linecap="round"/>
+              <line x1="16" y1="17" x2="8" y2="17" stroke-linecap="round"/>
+              <polyline points="10 9 9 9 8 9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            导出Word
+          </button>
+
           <SettingsPanel
             v-model:model="model"
             v-model:temperature="temperature"
@@ -180,7 +228,7 @@ onMounted(async () => {
         <div v-else-if="messages.length === 0" class="welcome">
           <div class="welcome-icon">💬</div>
           <h2>开始与 DeepSeek 对话</h2>
-          <p>支持流式输出 · Markdown 渲染 · 文件上传</p>
+          <p>支持流式输出 · Markdown 渲染 · 文件上传 · 图片OCR</p>
           <div class="tips">
             <span class="tip">试试问我：</span>
             <button class="tip-chip" @click="handleSend('用一句话介绍你自己')">介绍你自己</button>
@@ -333,6 +381,23 @@ onMounted(async () => {
   align-items: center;
 }
 
+.export-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.export-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .clear-btn {
   background: transparent;
   color: var(--text-dim);
@@ -467,6 +532,9 @@ onMounted(async () => {
   .toggle-btn {
     display: block;
   }
+
+  .export-btn span {
+    display: none;
+  }
 }
 </style>
-
