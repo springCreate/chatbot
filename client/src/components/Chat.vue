@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, nextTick, watch, onMounted } from 'vue'
 import { useChat, useSessions, useUpload } from '../composables/useChat.js'
 import ChatMessage from './ChatMessage.vue'
@@ -128,7 +128,7 @@ onMounted(async () => {
       <div class="sidebar-footer">
         <button class="user-btn" @click="emit('logout')">
           <span class="avatar">{{ user.username[0] }}</span>
-          <span class="name">{{ user.username }}</span>
+          <span class="name">{{ user.username }}</span><span class="logout-label">退出</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m6 14h4a2 2 0 002-2V5a2 2 0 00-2-2h-4" stroke-linecap="round"/>
             <path d="M15 3v4M9 21v-4" stroke-linecap="round"/>
@@ -264,6 +264,7 @@ onMounted(async () => {
 }
 
 .user-btn {
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -274,6 +275,26 @@ onMounted(async () => {
   border-radius: 10px;
   color: var(--text);
   font-size: 14px;
+}
+
+.user-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--danger);
+}
+
+.user-btn .logout-label {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.user-btn:hover .logout-label {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
 }
 
 .user-btn .avatar {
@@ -465,3 +486,5 @@ onMounted(async () => {
 
   }
 </style>
+
+
