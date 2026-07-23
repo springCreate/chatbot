@@ -92,48 +92,6 @@ function handleClear() {
   }
 }
 
-async function exportToWord() {
-  if (!currentSession.value || messages.value.length === 0) {
-    alert('暂无内容可导出')
-    return
-  }
-
-  const content = messages.value.map(m => {
-    const prefix = m.role === 'user' ? '### 用户：' : '### AI：'
-    return prefix + m.content
-  }).join('\n\n')
-
-  try {
-    const token = localStorage.getItem('chatbot_token')
-    const API_BASE = import.meta.env.DEV ? 'http://localhost:3000' : ''
-    const res = await fetch(API_BASE + '/api/export/docx', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token,
-      },
-      body: JSON.stringify({ content, filename: currentSession.value.title }),
-    })
-
-    if (res.ok) {
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = currentSession.value.title + '.docx'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } else {
-      const err = await res.json().catch(() => ({}))
-      alert(err.error || '导出失败')
-    }
-  } catch (err) {
-    alert('导出失败：' + err.message)
-  }
-}
-
 onMounted(async () => {
   await fetchSessions()
   if (sessions.value.length > 0) {
@@ -192,18 +150,7 @@ onMounted(async () => {
         </div>
 
         <div class="actions">
-          <button class="export-btn" @click="exportToWord" title="导出Word">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round"/>
-              <polyline points="14 2 14 8 20 8" stroke-linecap="round" stroke-linejoin="round"/>
-              <line x1="16" y1="13" x2="8" y2="13" stroke-linecap="round"/>
-              <line x1="16" y1="17" x2="8" y2="17" stroke-linecap="round"/>
-              <polyline points="10 9 9 9 8 9" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            导出Word
-          </button>
-
-          <SettingsPanel
+                    <SettingsPanel
             v-model:model="model"
             v-model:temperature="temperature"
             v-model:maxTokens="maxTokens"
@@ -381,23 +328,6 @@ onMounted(async () => {
   align-items: center;
 }
 
-.export-btn {
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 12px;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.export-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .clear-btn {
   background: transparent;
   color: var(--text-dim);
@@ -533,8 +463,5 @@ onMounted(async () => {
     display: block;
   }
 
-  .export-btn span {
-    display: none;
   }
-}
 </style>

@@ -1,4 +1,4 @@
-# DeepSeek 智能聊天助手
+﻿# DeepSeek 智能聊天助手
 
 基于 DeepSeek 大模型 API 的全栈智能聊天应用，支持流式输出、Markdown 渲染、文件上传与图片OCR识别。
 
@@ -10,7 +10,6 @@
 - 📝 **Markdown 渲染**：代码高亮、表格、列表、引用块完整支持
 - 📎 **文件上传**：支持 PDF、Word、Excel、TXT、Markdown、CSV、图片等格式
 - 🖼️ **图片OCR识别**：上传图片自动识别文字内容（中英文混合）
-- 📄 **导出Word**：一键将对话内容导出为 .docx 文档
 - 🔒 **密钥安全**：API Key 仅存于后端环境变量，前端永不接触
 - 🎨 **主题切换**：暗色/亮色主题自由切换
 - 🔐 **用户认证**：注册/登录系统，数据隔离
@@ -25,7 +24,6 @@
 | 模型 | DeepSeek API (deepseek-chat / deepseek-reasoner) |
 | 渲染 | marked + highlight.js |
 | OCR | Tesseract.js |
-| 文档 | docx (Word导出) |
 | 文件解析 | pdf-parse, mammoth, xlsx |
 
 ## 📁 项目结构
@@ -33,7 +31,7 @@
 ```
 Chatbot/
 ├── server/              # Express 后端
-│   ├── index.js         # 服务入口 + DeepSeek 流式代理 + 文件解析 + Word导出
+│   ├── index.js         # 服务入口 + DeepSeek 流式代理 + 文件解析
 │   ├── package.json
 │   ├── .env             # API 密钥（不提交 Git，需自行创建）
 │   └── .env.example     # 配置模板
@@ -174,3 +172,4 @@ kill -9 <PID>
 ## 📄 许可证
 
 MIT License
+

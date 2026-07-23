@@ -228,68 +228,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
   }
 });
 
-app.post('/api/export/docx', authenticateToken, async (req, res) => {
-  try {
-    const { content, filename } = req.body;
-    if (!content) return res.status(400).json({ error: 'Content is required' });
-
-    const safeFilename = (filename || 'document').replace(/[^\w\u4e00-\u9fa5 ._-]/g, '').trim().substring(0, 50) || 'document';
-
-    const lines = content.split('\n');
-    const paragraphs = [];
-
-    paragraphs.push(new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      children: [new TextRun(safeFilename || 'AI Chat Document')],
-      alignment: AlignmentType.CENTER,
-    }));
-
-    paragraphs.push(new Paragraph(''));
-
-    lines.forEach(function(line) {
-      if (line.startsWith('### ')) {
-        paragraphs.push(new Paragraph({
-          heading: HeadingLevel.HEADING_3,
-          children: [new TextRun(line.replace('### ', ''))],
-        }));
-      } else if (line.startsWith('## ')) {
-        paragraphs.push(new Paragraph({
-          heading: HeadingLevel.HEADING_2,
-          children: [new TextRun(line.replace('## ', ''))],
-        }));
-      } else if (line.startsWith('# ')) {
-        paragraphs.push(new Paragraph({
-          heading: HeadingLevel.HEADING_1,
-          children: [new TextRun(line.replace('# ', ''))],
-        }));
-      } else if (line.startsWith('- ') || line.startsWith('* ')) {
-        paragraphs.push(new Paragraph({
-          bullet: { level: 0 },
-          children: [new TextRun(line.substring(2))],
-        }));
-      } else if (line.startsWith('  - ') || line.startsWith('  * ')) {
-        paragraphs.push(new Paragraph({
-          bullet: { level: 1 },
-          children: [new TextRun(line.substring(4))],
-        }));
-      } else {
-        paragraphs.push(new Paragraph(line || ' '));
-      }
-    });
-
-    const doc = new Document({ sections: [{ children: paragraphs }] });
-    const buffer = await Packer.toBuffer(doc);
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + safeFilename + '.docx"');
-    res.setHeader('Content-Length', buffer.length);
-    res.send(buffer);
-  } catch (err) {
-    console.error('Export error:', err);
-    res.status(500).json({ error: 'Export failed' });
-  }
-});
-
 app.post('/api/chat', authenticateToken, async (req, res) => {
   const controller = new AbortController();
   res.on("close", function() { if (!res.writableEnded) controller.abort(); });
