@@ -277,7 +277,7 @@ app.post('/api/export/docx', authenticateToken, async (req, res) => {
       }
     });
 
-    const doc = new Document({ paragraphs });
+    const doc = new Document({ sections: [{ children: paragraphs }] });
     const buffer = await Packer.toBuffer(doc);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
