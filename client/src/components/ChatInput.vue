@@ -21,22 +21,25 @@ const isImageType = (filename) => /\.(png|jpe?g|gif|webp|bmp)$/i.test(filename)
 function submit() {
   if (props.loading || !hasContent.value) return
 
-  let fullContent = text.value.trim()
-
-  if (attachments.value.length > 0) {
-    const attachTexts = attachments.value.map((a) => {
-      if (a.isImage) {
-        return `[附件: ${a.name}]\n${a.content || '[图片内容识别中...]'}`
+  const messageData = {
+    text: text.value.trim(),
+    attachments: attachments.value.map((a) => {
+      const sizeBytes = a.sizeBytes != null ? a.sizeBytes : a.size
+      return {
+        id: a.id,
+        name: a.name,
+        size: sizeBytes,
+        isImage: a.isImage,
+        type: a.fileType || (a.isImage ? 'Image' : 'Document'),
+        fileType: a.fileType,
+        content: a.content,
+        images: a.images || [],
       }
-      return `[附件: ${a.name}]\n${a.content}`
-    })
-    fullContent = fullContent
-      ? fullContent + '\n\n' + attachTexts.join('\n\n')
-      : attachTexts.join('\n\n')
+    }),
   }
 
-  if (!fullContent.trim()) return
-  emit('send', fullContent)
+  if (!messageData.text && messageData.attachments.length === 0) return
+  emit('send', messageData)
   text.value = ''
   attachments.value = []
   nextTick(autoResize)
@@ -74,6 +77,7 @@ async function handleFileSelect(e) {
     id: attachId,
     name: file.name,
     size: (file.size / 1024).toFixed(1) + ' KB',
+    sizeBytes: file.size,
     isImage: isImg,
     content: '',
     status: isImg ? 'ocr' : 'parsing',

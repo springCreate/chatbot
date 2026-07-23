@@ -142,11 +142,19 @@ npm run dev
 
 | 类型 | 扩展名 | 说明 |
 |------|--------|------|
-| 文档 | `.pdf` `.docx` `.doc` `.txt` `.md` | 提取文本内容 |
+| 文档 | `.pdf` `.docx` `.doc` `.txt` `.md` | 提取文本内容（docx 同步提取内嵌图片） |
 | 表格 | `.xlsx` `.xls` `.csv` | 转为文本格式 |
-| 图片 | `.png` `.jpg` `.jpeg` `.gif` `.webp` `.bmp` | OCR文字识别 |
+| 图片 | `.png` `.jpg` `.jpeg` `.gif` `.webp` `.bmp` | OCR文字识别（中英文） |
 
 > 文件大小限制：10MB
+
+### 附件显示机制
+
+上传的文件以**附件卡片**形式呈现在聊天框中，而非大段文字：
+
+- **展示层**：每条用户消息包含 `content`（用户输入的纯文字）和 `attachments`（附件数组），UI 仅显示附件卡片
+- **传输层**：调用 DeepSeek API 时自动将 `content` 与 `attachments[].content` 拼接为完整的 `[附件: 文件名]\n内容` 形式，AI 仍可读取全部内容
+- **图片附件**：docx 中的内嵌图片以 base64 dataURI 形式保存到 `attachments[].images`，用户消息中可直接预览
 
 ## ⚠️ 常见问题
 

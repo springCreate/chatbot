@@ -77,21 +77,34 @@ export function useChat() {
   let readerRef = null
   let stopped = false
   
-  async function sendMessage(sessionId, content, model = 'deepseek-chat', options = {}) {
+  async function sendMessage(sessionId, messageData, model = 'deepseek-chat', options = {}) {
     if (loading.value) return
-    const text = content.trim()
-    if (!text) return
-    
-    const userMessage = { role: 'user', content: text }
+    const data = typeof messageData === 'string'
+      ? { text: messageData, attachments: [] }
+      : (messageData || { text: '', attachments: [] })
+    const text = (data.text || '').trim()
+    const attachments = Array.isArray(data.attachments) ? data.attachments : []
+    if (!text && attachments.length === 0) return
+
+    const userMessage = { role: 'user', content: text, attachments }
     messages.value.push(userMessage)
     loading.value = true
     error.value = ''
     stopped = false
-    
-    const requestMessages = messages.value.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }))
+
+    const NL = String.fromCharCode(10)
+    const DNL = NL + NL
+    const requestMessages = messages.value.map((m) => {
+      let fullContent = m.content || ''
+      const mAtts = Array.isArray(m.attachments) ? m.attachments : []
+      if (mAtts.length > 0) {
+        const attachText = mAtts.map((a) => {
+          return '[附件: ' + a.name + ']' + NL + (a.content || '')
+        }).join(DNL)
+        fullContent = fullContent ? fullContent + DNL + attachText : attachText
+      }
+      return { role: m.role, content: fullContent, attachments: mAtts }
+    })
     
     const aiMessage = reactive({ role: 'assistant', content: '' })
     messages.value.push(aiMessage)
@@ -174,13 +187,14 @@ export function useChat() {
   async function loadMessages(sessionId) {
     const headers = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
-    
+
     const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/messages`, { headers })
     if (res.ok) {
       messages.value = (await res.json()).map(m => ({
         id: m.id,
         role: m.role,
         content: m.content,
+        attachments: Array.isArray(m.attachments) ? m.attachments : [],
       }))
     }
     return res.ok

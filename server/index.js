@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -195,11 +195,29 @@ app.get('/api/sessions/:id/messages', authenticateToken, (req, res) => {
 
 async function parseFile(filePath, ext, originalname) {
   let text = '';
+  let images = [];
   const typeMap = { pdf: 'PDF', docx: 'Word', doc: 'Word', xlsx: 'Excel', xls: 'Excel', csv: 'CSV', txt: 'Text', md: 'Markdown', png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', webp: 'WebP', bmp: 'BMP' };
   const fileType = typeMap[ext] || 'Unknown';
   try {
     if (ext === 'pdf') { text = (await pdfParse(fs.readFileSync(filePath))).text; }
-    else if (ext === 'docx' || ext === 'doc') { text = (await mammoth.extractRawText({ path: filePath })).value; }
+    else if (ext === 'docx' || ext === 'doc') {
+      try {
+        const result = await mammoth.extractRawText({
+          path: filePath,
+          convertImage: mammoth.images.imgElement(function(image) {
+            return image.read('base64').then(function(buffer) {
+              const contentType = image.contentType || 'image/png';
+              const dataUri = 'data:' + contentType + ';base64,' + buffer;
+              images.push({ type: 'image', data: dataUri, name: 'image-' + (images.length + 1) + '.png' });
+              return { src: dataUri };
+            }).catch(function() { return { src: '' }; });
+          })
+        });
+        text = result.value || '';
+      } catch (innerErr) {
+        text = (await mammoth.extractRawText({ path: filePath })).value || '';
+      }
+    }
     else if (ext === 'xlsx' || ext === 'xls') {
       const wb = XLSX.readFile(filePath);
       let csvContent = '';
@@ -209,9 +227,15 @@ async function parseFile(filePath, ext, originalname) {
       text = csvContent;
     }
     else if (ext === 'csv') { text = fs.readFileSync(filePath, 'utf-8'); }
-    else if (['png','jpg','jpeg','gif','webp','bmp'].indexOf(ext) !== -1) { text = '[Image: ' + originalname + ']'; }
+    else if (['png','jpg','jpeg','gif','webp','bmp'].indexOf(ext) !== -1) {
+      const buf = fs.readFileSync(filePath);
+      const mime = ALLOWED_EXTENSIONS[ext] || 'image/png';
+      const dataUri = 'data:' + mime + ';base64,' + buf.toString('base64');
+      images.push({ type: 'image', data: dataUri, name: originalname });
+      text = '[Image: ' + originalname + ']';
+    }
     else { text = fs.readFileSync(filePath, 'utf-8'); }
-    return { text: text.substring(0, 30000), fileType };
+    return { text: text.substring(0, 30000), fileType, images };
   } catch (err) { throw new Error('Parse failed: ' + err.message); }
 }
 
@@ -219,9 +243,9 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
   if (!req.file) return res.status(400).json({ error: 'Please select a file' });
   try {
     const ext = req.file.originalname.split('.').pop().toLowerCase();
-    const { text, fileType } = await parseFile(req.file.path, ext, req.file.originalname);
+    const { text, fileType, images } = await parseFile(req.file.path, ext, req.file.originalname);
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    res.json({ content: text, filename: req.file.originalname, fileType });
+    res.json({ content: text, filename: req.file.originalname, fileType, size: req.file.size, images: images || [] });
   } catch (err) {
     if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: err.message });
@@ -238,17 +262,26 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     const db = loadDB();
     const userMsg = messages[messages.length - 1];
     if (userMsg && userMsg.role === 'user') {
-      db.messages.push({ id: db.nextMessageId++, session_id, role: 'user', content: userMsg.content, created_at: new Date().toISOString() });
+      const cleanContent = (userMsg.content || "").replace(/\[附件:[\s\S]*?(?=\[附件:|$)/g, "").trim();
+      const attachmentsToSave = (userMsg.attachments || []).map(function(a) { return { name: a.name, size: a.size, type: a.type, fileType: a.fileType, content: a.content, images: a.images || [] }; });
+      db.messages.push({ id: db.nextMessageId++, session_id, role: 'user', content: cleanContent, attachments: attachmentsToSave, created_at: new Date().toISOString() });
       const session = db.sessions.find(function(s) { return s.id === session_id; });
-      if (session) { session.updated_at = new Date().toISOString(); if (['New Session', '新会话'].includes(session.title)) { const cleanContent = userMsg.content.replace(/\[附件:.+?\]/g, '').trim(); session.title = cleanContent.substring(0, 30) + (cleanContent.length > 30 ? '...' : '') || '新会话'; } }
+      if (session) { session.updated_at = new Date().toISOString(); if (['New Session', '新会话'].includes(session.title)) { session.title = cleanContent.substring(0, 30) + (cleanContent.length > 30 ? '...' : '') || '新会话'; } }
       saveDB(db);
     }
-    res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
-    const response = await fetch(DEEPSEEK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + DEEPSEEK_API_KEY }, body: JSON.stringify({ model, messages, stream: true, temperature, max_tokens }), signal: controller.signal });
+    const deepseekMessages = messages.map(function(m) {
+      let fullContent = m.content || '';
+      if (m.attachments && m.attachments.length > 0) {
+        const attachText = m.attachments.map(function(a) {
+          return '[附件: ' + a.name + ']' + String.fromCharCode(10) + (a.content || '');
+        }).join(String.fromCharCode(10,10));
+        fullContent = fullContent ? fullContent + String.fromCharCode(10,10) + attachText : attachText;
+      }
+      return { role: m.role, content: fullContent };
+    });
+    const response = await fetch(DEEPSEEK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + DEEPSEEK_API_KEY }, body: JSON.stringify({ model, messages: deepseekMessages, stream: true, temperature, max_tokens }), signal: controller.signal });
     if (!response.ok) { let msg = 'API Error'; try { msg = (await response.json()).error?.message || msg; } catch {} res.write('data: ' + JSON.stringify({ error: msg }) + '\n\n'); return res.end(); }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -264,3 +297,6 @@ app.use(express.static(clientDist));
 app.get(/^\/(?!api).*/, function(req, res) { res.sendFile(path.join(clientDist, 'index.html'), function(err) { if (err) res.status(404).send('Build frontend first'); }); });
 
 app.listen(PORT, function() { console.log('Server started: http://localhost:' + PORT); console.log('Data dir: ' + USER_DATA_DIR); if (!DEEPSEEK_API_KEY) console.warn('DEEPSEEK_API_KEY not configured'); });
+
+
+

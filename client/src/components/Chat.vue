@@ -38,11 +38,14 @@ async function scrollToBottom() {
 
 watch(() => messages.value.length, scrollToBottom)
 
-async function handleSend(text) {
+async function handleSend(messageData) {
   if (!currentSession.value) {
     currentSession.value = await createSession('新会话')
   }
-  sendMessage(currentSession.value.id, text, model.value, {
+  const data = typeof messageData === 'string'
+    ? { text: messageData, attachments: [] }
+    : messageData
+  sendMessage(currentSession.value.id, data, model.value, {
     temperature: temperature.value,
     maxTokens: maxTokens.value,
   })
