@@ -1,8 +1,8 @@
  # DeepSeek 智能聊天助手
  
- [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/springCreate/chatbot)
- 
  基于 DeepSeek 大模型 API 的全栈智能聊天应用，支持流式输出、Markdown 渲染、文件上传与图片 OCR 识别。
+ 
+ 每次推送到 `main` 分支，GitHub Actions 会自动构建 Docker 镜像并发布到 [GitHub Container Registry](https://github.com/springCreate/chatbot/pkgs/container/chatbot)，任何人都可以直接拉取运行。
  
  ## 功能特性
  
@@ -53,11 +53,18 @@
  停止服务：`docker compose down`
  查看日志：`docker compose logs -f`
  
- ### 方式二：Render 一键部署（分享给朋友）
+ ### 方式二：使用预构建的 Docker 镜像（无需克隆仓库）
  
- 点击顶部 **Deploy to Render** 按钮 → 关联 GitHub 账号 → 填入 `DEEPSEEK_API_KEY` → 等待几分钟自动上线。
+ GitHub Actions 每次推送会自动构建镜像并推送到 ghcr.io。任何人都可以直接运行，无需 Node.js 环境：
  
- Render 会自动配置域名（`https://xxx.onrender.com`），可直接分享给任何人使用。
+ ```bash
+ # 拉取镜像（首次自动下载）
+ docker run -d -p 3000:3000 -e DEEPSEEK_API_KEY=sk-your-key-here ghcr.io/springCreate/chatbot:latest
+ ```
+ 
+ > 可选的持久化数据：`-v chatbot-data:/var/data`
+ 
+ 浏览器打开 **http://localhost:3000** 即可使用。
  
  ### 方式三：传统 Node 方式
  
@@ -74,6 +81,44 @@
  ```
  
  浏览器打开 **http://localhost:3000**。
+ 
+ ## 部署到云服务器
+ 
+ ### 使用 Docker 部署到任意 VPS
+ 
+ ```bash
+ # 登录到你的云服务器后：
+ docker run -d \
+   --name chatbot \
+   -p 80:3000 \
+   -e DEEPSEEK_API_KEY=sk-your-key-here \
+   -e JWT_SECRET=your-secret-here \
+   -v chatbot-data:/var/data \
+   ghcr.io/springCreate/chatbot:latest
+ ```
+ 
+ 之后访问 `http://你的服务器IP` 即可使用。如需 HTTPS，可用 Nginx 反向代理 + certbot。
+ 
+ ### 手动部署到 Render
+ 
+ 如果 Render 的 GitHub OAuth 授权流程可用，也可以在 Render 控制台手动创建 Web Service：
+ 
+ 1. 登录 [Render Dashboard](https://dashboard.render.com/)
+ 2. 点击 **New +** → **Web Service**
+ 3. 选择 **Build and deploy from a Git repository** → 连接你的 GitHub 仓库
+ 4. 配置：
+    - **Name**: `deepseek-chatbot`
+    - **Runtime**: `Node`
+    - **Build Command**: `npm install && npm --prefix client install && npm --prefix client run build`
+    - **Start Command**: `node server/index.js`
+    - **Plan**: `Free`
+ 5. 添加环境变量：
+    - `DEEPSEEK_API_KEY` → 你的 API Key
+    - `JWT_SECRET` → 自动生成一个随机字符串
+    - `NODE_ENV` → `production`
+ 6. 点击 **Create Web Service**，等待部署完成
+ 
+ 部署成功后 Render 会分配一个 `https://xxx.onrender.com` 域名，可直接分享给任何人使用。
  
  ## 项目结构
  
@@ -98,7 +143,10 @@
  ├── Dockerfile                  # 多阶段 Docker 构建
  ├── docker-compose.yml          # Docker 编排
  ├── render.yaml                 # Render 云部署配置
- ├── .github/workflows/ci.yml    # CI 自动化
+ ├── .github/
+ │   ├── workflows/
+ │   │   ├── ci.yml              # 前端构建 + Docker 镜像验证
+ │   │   └── docker-publish.yml  # 自动推送镜像到 ghcr.io
  └── .gitignore
  ```
  
@@ -108,8 +156,8 @@
  |------|------|--------|
  | `DEEPSEEK_API_KEY` | DeepSeek API 密钥（必填） | - |
  | `PORT` | 后端端口 | 3000 |
- | `JWT_SECRET` | JWT 签名密钥（Render 自动生成） | chatbot-secret-key-2024 |
- | `DATA_DIR` | 数据持久化目录（Render 磁盘挂载） | 系统临时目录 |
+ | `JWT_SECRET` | JWT 签名密钥 | chatbot-secret-key-2024 |
+ | `DATA_DIR` | 数据持久化目录 | 系统临时目录 |
  
  ## 文件上传支持
  
