@@ -1,184 +1,150 @@
-﻿# DeepSeek 智能聊天助手
-
-基于 DeepSeek 大模型 API 的全栈智能聊天应用，支持流式输出、Markdown 渲染、文件上传与图片OCR识别。
-
-## ✨ 功能特性
-
-- 🤖 **接入 DeepSeek**：支持 DeepSeek-V3 与 DeepSeek-R1 模型切换
-- ⚡ **流式输出**：SSE 实时打字机效果，逐字呈现 AI 回复
-- 💬 **多轮对话**：保留上下文记忆，支持连续追问
-- 📝 **Markdown 渲染**：代码高亮、表格、列表、引用块完整支持
-- 📎 **文件上传**：支持 PDF、Word、Excel、TXT、Markdown、CSV、图片等格式，以附件卡片形式展示
-- 🖼️ **图片OCR识别**：上传图片自动识别文字内容（中英文混合）
-- 📷 **文档图片提取**：支持提取 Word 文档中的内嵌图片
-- 🔒 **密钥安全**：API Key 仅存于后端环境变量，前端永不接触
-- 🎨 **主题切换**：暗色/亮色主题自由切换
-- 🔐 **用户认证**：注册/登录系统，数据隔离
-- 📱 **响应式布局**：桌面与移动端自适应
-
-## 🛠 技术栈
-
-| 层级 | 技术 |
-|------|------|
-| 前端 | Vue 3 + Vite |
-| 后端 | Node.js + Express |
-| 模型 | DeepSeek API (deepseek-chat / deepseek-reasoner) |
-| 渲染 | marked + highlight.js |
-| OCR | Tesseract.js |
-| 文件解析 | pdf-parse, mammoth, xlsx |
-
-## 📁 项目结构
-
-```
-Chatbot/
-├── server/              # Express 后端
-│   ├── index.js         # 服务入口 + DeepSeek 流式代理 + 文件解析
-│   ├── package.json
-│   ├── .env             # API 密钥（不提交 Git，需自行创建）
-│   └── .env.example     # 配置模板
-├── client/             # Vue 3 前端
-│   ├── src/
-│   │   ├── components/  # Chat / ChatInput / ChatMessage / SettingsPanel 组件
-│   │   ├── composables/ # useChat / useAuth / useSessions 逻辑
-│   │   ├── utils/       # Markdown渲染 + OCR识别工具
-│   │   ├── App.vue
-│   │   ├── main.js
-│   │   └── style.css
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-├── .gitignore
-└── README.md
-```
-
-## 🔧 环境要求
-
-在使用前，请确保已安装以下软件：
-
-- **Node.js** v18 或更高版本 — 下载地址：https://nodejs.org/
-- **Git** — 下载地址：https://git-scm.com/
-
-可通过以下命令验证：
-```bash
-node -v   # 应输出 v18.x.x 或更高
-git --version
-```
-
-## 🚀 快速开始
-
-### 方式一：生产部署（推荐，单端口访问）
-
-#### 1. 克隆仓库
-
-```bash
-git clone https://github.com/springCreate/chatbot.git
-cd chatbot
-```
-
-#### 2. 配置后端环境变量
-
-**Windows（CMD / PowerShell）**：
-```bash
-cd server
-copy .env.example .env
-```
-
-**macOS / Linux**：
-```bash
-cd server
-cp .env.example .env
-```
-
-然后用编辑器打开 `server/.env`，填入你的 DeepSeek API Key：
-```
-DEEPSEEK_API_KEY=sk-你的API密钥
-PORT=3000
-```
-
-> API Key 获取地址：https://platform.deepseek.com/ （需注册账号）
-
-#### 3. 安装后端依赖并启动
-
-```bash
-npm install
-npm start
-```
-
-#### 4. 构建前端
-
-新开一个终端窗口：
-```bash
-cd chatbot/client
-npm install
-npm run build
-```
-
-#### 5. 访问应用
-
-浏览器打开 **http://localhost:3000** 即可使用完整应用（后端会自动托管前端构建产物）。
-
----
-
-### 方式二：开发模式（前后端分离，支持热更新）
-
-适合二次开发或调试。
-
-```bash
-# 终端 1：启动后端
-cd server
-npm install
-copy .env.example .env   # 编辑填入 API Key
-npm run dev
-
-# 终端 2：启动前端
-cd client
-npm install
-npm run dev
-```
-
-访问 **http://localhost:5173**（前端开发服务器，修改代码自动刷新）。
-
-## 📎 文件上传支持
-
-| 类型 | 扩展名 | 说明 |
-|------|--------|------|
-| 文档 | `.pdf` `.docx` `.doc` `.txt` `.md` | 提取文本内容（docx 同步提取内嵌图片） |
-| 表格 | `.xlsx` `.xls` `.csv` | 转为文本格式 |
-| 图片 | `.png` `.jpg` `.jpeg` `.gif` `.webp` `.bmp` | OCR文字识别（中英文） |
-
-> 文件大小限制：10MB
-
-### 附件显示机制
-
-上传的文件以**附件卡片**形式呈现在聊天框中，而非大段文字：
-
-- **展示层**：每条用户消息包含 `content`（用户输入的纯文字）和 `attachments`（附件数组），UI 仅显示附件卡片
-- **传输层**：调用 DeepSeek API 时自动将 `content` 与 `attachments[].content` 拼接为完整的 `[附件: 文件名]\n内容` 形式，AI 仍可读取全部内容
-- **图片附件**：docx 中的内嵌图片以 base64 dataURI 形式保存到 `attachments[].images`，用户消息中可直接预览
-
-## ⚠️ 常见问题
-
-### 端口被占用（EADDRINUSE）
-
-```bash
-# Windows：查找占用 3000 端口的进程
-netstat -ano | findstr ":3000"
-# 终止对应进程（替换 PID，选择 LISTENING 状态的）
-taskkill /PID <PID号> /F
-
-# macOS / Linux
-lsof -i :3000
-kill -9 <PID>
-```
-
-## ⚙️ 环境变量
-
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥（必填） | - |
-| `PORT` | 后端端口 | 3000 |
-
-## 📄 许可证
-
-MIT License
-
+ # DeepSeek 智能聊天助手
+ 
+ [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/springCreate/chatbot)
+ 
+ 基于 DeepSeek 大模型 API 的全栈智能聊天应用，支持流式输出、Markdown 渲染、文件上传与图片 OCR 识别。
+ 
+ ## 功能特性
+ 
+ - **AI 对话**：接入 DeepSeek-V3 与 DeepSeek-R1 模型，SSE 流式输出
+ - **文件解析**：上传 PDF、Word、Excel、图片等文件，自动提取文字内容
+ - **图片 OCR**：上传图片自动识别中英文文字
+ - **多轮对话**：保留上下文记忆，支持连续追问
+ - **Markdown 渲染**：代码高亮、表格、列表完整展示
+ - **用户认证**：注册/登录系统，会话数据隔离
+ - **响应式布局**：桌面与移动端自适应
+ - **主题切换**：暗色/亮色主题自由切换
+ 
+ ## 技术栈
+ 
+ | 层级 | 技术 |
+ |------|------|
+ | 前端 | Vue 3 + Vite |
+ | 后端 | Node.js + Express |
+ | 模型 | DeepSeek API |
+ | 渲染 | marked + highlight.js |
+ | OCR | Tesseract.js |
+ | 文件解析 | pdf-parse, mammoth, xlsx |
+ 
+ ## 快速上手
+ 
+ > **前置条件**：需要 [DeepSeek API Key](https://platform.deepseek.com/)，申请后复制备用。
+ 
+ ### 方式一：Docker（推荐，本地一点即开）
+ 
+ 确保已安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。
+ 
+ ```bash
+ # 克隆仓库
+ git clone https://github.com/springCreate/chatbot.git
+ cd chatbot
+ 
+ # 配置 API Key
+ # Windows: copy server\.env.example server\.env
+ # macOS/Linux: cp server/.env.example server/.env
+ # 编辑 server/.env，填入你的 DeepSeek API Key
+ 
+ # 启动（后台运行）
+ docker compose up -d
+ ```
+ 
+ 浏览器打开 **http://localhost:3000** 即可使用。
+ 
+ 停止服务：`docker compose down`
+ 查看日志：`docker compose logs -f`
+ 
+ ### 方式二：Render 一键部署（分享给朋友）
+ 
+ 点击顶部 **Deploy to Render** 按钮 → 关联 GitHub 账号 → 填入 `DEEPSEEK_API_KEY` → 等待几分钟自动上线。
+ 
+ Render 会自动配置域名（`https://xxx.onrender.com`），可直接分享给任何人使用。
+ 
+ ### 方式三：传统 Node 方式
+ 
+ ```bash
+ # 1. 安装依赖
+ npm install
+ npm --prefix client install
+ 
+ # 2. 构建前端
+ npm --prefix client run build
+ 
+ # 3. 启动服务（需先配置 server/.env）
+ npm start
+ ```
+ 
+ 浏览器打开 **http://localhost:3000**。
+ 
+ ## 项目结构
+ 
+ ```
+ chatbot/
+ ├── server/                     # Express 后端
+ │   ├── index.js                # 服务入口 + DeepSeek 流式代理 + 文件解析
+ │   ├── package.json
+ │   ├── .env                    # API 密钥（不提交 Git）
+ │   └── .env.example            # 配置模板
+ ├── client/                     # Vue 3 前端
+ │   ├── src/
+ │   │   ├── components/         # Chat / ChatInput / ChatMessage / SettingsPanel
+ │   │   ├── composables/        # useChat / useAuth / useSessions
+ │   │   ├── utils/              # Markdown 渲染 + OCR 工具
+ │   │   ├── App.vue
+ │   │   ├── main.js
+ │   │   └── style.css
+ │   ├── index.html
+ │   ├── package.json
+ │   └── vite.config.js
+ ├── Dockerfile                  # 多阶段 Docker 构建
+ ├── docker-compose.yml          # Docker 编排
+ ├── render.yaml                 # Render 云部署配置
+ ├── .github/workflows/ci.yml    # CI 自动化
+ └── .gitignore
+ ```
+ 
+ ## 环境变量
+ 
+ | 变量 | 说明 | 默认值 |
+ |------|------|--------|
+ | `DEEPSEEK_API_KEY` | DeepSeek API 密钥（必填） | - |
+ | `PORT` | 后端端口 | 3000 |
+ | `JWT_SECRET` | JWT 签名密钥（Render 自动生成） | chatbot-secret-key-2024 |
+ | `DATA_DIR` | 数据持久化目录（Render 磁盘挂载） | 系统临时目录 |
+ 
+ ## 文件上传支持
+ 
+ | 类型 | 扩展名 | 说明 |
+ |------|--------|------|
+ | 文档 | .pdf .docx .doc .txt .md | 提取文本内容（docx 同步提取内嵌图片） |
+ | 表格 | .xlsx .xls .csv | 转为文本格式 |
+ | 图片 | .png .jpg .jpeg .gif .webp .bmp | OCR 文字识别（中英文） |
+ 
+ > 文件大小限制：10MB
+ 
+ ### 附件显示机制
+ 
+ 上传的文件以**附件卡片**形式呈现在聊天框中。用户消息包含 `content`（纯文字）和 `attachments`（附件数组），UI 仅显示附件卡片。调用 DeepSeek API 时自动将 `content` 与附件内容拼接，AI 可读取全部信息。
+ 
+ ## 常见问题
+ 
+ ### Docker 启动后页面空白
+ 
+ 确保 `server/.env` 文件存在且包含 `DEEPSEEK_API_KEY`。查看日志：`docker compose logs -f`。
+ 
+ ### 端口被占用
+ 
+ ```bash
+ # Windows
+ netstat -ano | findstr ":3000"
+ taskkill /PID <PID> /F
+ 
+ # macOS / Linux
+ lsof -i :3000
+ kill -9 <PID>
+ ```
+ 
+ 或修改 `docker-compose.yml` 中的端口映射为其他端口（如 `"3001:3000"`）。
+ 
+ ## 许可证
+ 
+ MIT

@@ -1,0 +1,12 @@
+ services:
+   chatbot:
+     build: .
+     ports:
+       - "3000:3000"
+     volumes:
+       - chatbot-data:/var/data
+     env_file:
+       - .env
+ 
+ volumes:
+   chatbot-data:

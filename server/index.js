@@ -22,7 +22,11 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const JWT_SECRET = process.env.JWT_SECRET || 'chatbot-secret-key-2024';
 
-const USER_DATA_DIR = path.join(os.tmpdir(), 'deepseek-chat-' + process.env.USERNAME);
+// 优先使用 DATA_DIR 环境变量（云平台持久化磁盘），否则用本地临时目录
+const USER_DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(os.tmpdir(), 'deepseek-chat-data');
+console.log('Data directory:', USER_DATA_DIR);
 const UPLOADS_DIR = path.join(USER_DATA_DIR, 'uploads');
 const DB_FILE = path.join(USER_DATA_DIR, 'db.json');
 
