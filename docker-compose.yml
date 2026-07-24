@@ -8,5 +8,17 @@
      env_file:
        - .env
  
+   # Cloudflare Tunnel: 将本地服务暴露到公网 HTTPS URL
+   # 使用方式: docker compose --profile tunnel up -d
+   # 查看地址: docker compose logs tunnel | grep trycloudflare
+   tunnel:
+     image: cloudflare/cloudflared:latest
+     command: tunnel --url http://chatbot:3000
+     depends_on:
+       - chatbot
+     profiles:
+       - tunnel
+     restart: unless-stopped
+ 
  volumes:
    chatbot-data:
