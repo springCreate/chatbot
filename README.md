@@ -110,9 +110,7 @@
 
 ## 🎨 界面预览
 
-<div align="center">
-  <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20modern%20AI%20chatbot%20interface%20with%20dark%20theme%2C%20showing%20conversation%20between%20user%20and%20AI%20assistant%2C%20clean%20UI%20design%2C%20code%20highlighting%2C%20side%20panel%20with%20chat%20history%2C%20professional%20tech%20style%2C%20purple%20accent%20color&image_size=landscape_16_9" alt="DeepSeek Chatbot Preview" width="880" />
-</div>
+<img src="界面预览.png" alt="界面预览" width="600">
 
 <br>
 
