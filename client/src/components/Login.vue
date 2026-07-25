@@ -1,6 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 
+const props = defineProps({
+  onLogin: { type: Function, default: null },
+  onRegister: { type: Function, default: null },
+})
 const emit = defineEmits(['login', 'register'])
 
 const isLogin = ref(true)
@@ -13,12 +17,12 @@ const error = ref('')
 
 async function submit() {
   error.value = ''
-  
+
   if (!username.value.trim() || !password.value.trim()) {
     error.value = '用户名和密码不能为空'
     return
   }
-  
+
   if (!isLogin.value) {
     if (!email.value.trim()) {
       error.value = '邮箱不能为空'
@@ -29,22 +33,26 @@ async function submit() {
       return
     }
   }
-  
+
   loading.value = true
-  
+
   try {
     let result
     if (isLogin.value) {
-      result = await emit('login', username.value, password.value)
+      result = props.onLogin
+        ? await props.onLogin(username.value, password.value)
+        : await emit('login', username.value, password.value)
     } else {
-      result = await emit('register', username.value, password.value, email.value)
+      result = props.onRegister
+        ? await props.onRegister(username.value, password.value, email.value)
+        : await emit('register', username.value, password.value, email.value)
     }
-    
-    if (!result.success) {
+
+    if (result && !result.success) {
       error.value = result.error || '操作失败'
     }
   } catch (err) {
-    error.value = '网络错误，请重试'
+    error.value = err?.message || '网络错误，请重试'
   } finally {
     loading.value = false
   }

@@ -1,33 +1,44 @@
 # DeepSeek 智能聊天助手
 
+![DeepSeek Chatbot](https://img.shields.io/badge/DeepSeek-V4-blue)
+![Vue 3](https://img.shields.io/badge/Vue-3-green)
+![Node.js](https://img.shields.io/badge/Node.js-18+-yellow)
+![License](https://img.shields.io/badge/License-MIT-red)
+
 基于 DeepSeek 大模型 API 的全栈智能聊天应用，支持流式输出、Markdown 渲染、文件上传与图片 OCR 识别。
 
-## 功能特性
+<div align="center">
+  <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20modern%20AI%20chatbot%20interface%20with%20dark%20theme%2C%20showing%20conversation%20between%20user%20and%20AI%20assistant%2C%20clean%20UI%20design%2C%20code%20highlighting%2C%20side%20panel%20with%20chat%20history%2C%20professional%20tech%20style&image_size=landscape_16_9" alt="DeepSeek Chatbot Preview" width="800" />
+</div>
 
-- **AI 对话**：接入 DeepSeek-V4 Pro 与 DeepSeek-V4 Flash 模型，SSE 流式输出
-- **文件解析**：上传 PDF、Word、Excel、图片等文件，自动提取文字内容
-- **图片 OCR**：上传图片自动识别中英文文字
-- **多轮对话**：保留上下文记忆，支持连续追问
-- **Markdown 渲染**：代码高亮、表格、列表完整展示
-- **用户认证**：注册/登录系统，JWT 鉴权，会话数据隔离
-- **会话管理**：多会话创建、重命名、删除，消息持久化存储
-- **响应式布局**：桌面与移动端自适应
-- **主题切换**：暗色/亮色主题自由切换
+## ✨ 功能特性
 
-## 技术栈
+| 特性 | 说明 |
+|------|------|
+| 🤖 **AI 对话** | 接入 DeepSeek-V4 Pro / Flash 模型，SSE 流式输出 |
+| 📄 **文件解析** | 支持 PDF、Word、Excel、文本等文件内容提取 |
+| 🖼️ **图片 OCR** | 自动识别中英文文字（Tesseract.js） |
+| 💬 **多轮对话** | 完整上下文记忆，支持连续追问 |
+| 📝 **Markdown 渲染** | 代码高亮、表格、列表完整展示 |
+| 🔐 **用户认证** | 注册/登录系统，JWT 鉴权，会话数据隔离 |
+| 📁 **会话管理** | 多会话创建、重命名、删除，消息持久化存储 |
+| 📱 **响应式布局** | 桌面与移动端自适应 |
+| 🌙 **主题切换** | 暗色/亮色主题自由切换 |
+
+## 🛠️ 技术栈
 
 | 层级 | 技术 |
 |------|------|
-| 前端 | Vue 3 + Vite |
-| 后端 | Node.js + Express |
-| 认证 | JWT (jsonwebtoken) + bcryptjs |
-| 模型 | DeepSeek API (流式 SSE) |
-| 渲染 | marked + highlight.js |
-| OCR | Tesseract.js |
+| 前端框架 | Vue 3 + Vite 5 |
+| 后端服务 | Node.js + Express |
+| 认证方案 | JWT + bcryptjs |
+| AI 模型 | DeepSeek API (流式 SSE) |
+| 内容渲染 | marked + highlight.js |
+| OCR 识别 | Tesseract.js |
 | 文件解析 | pdf-parse, mammoth, xlsx, docx |
 | 数据存储 | JSON 文件 (db.json) |
 
-## 快速上手
+## 🚀 快速上手
 
 > **前置条件**：需要 [DeepSeek API Key](https://platform.deepseek.com/)，申请后复制备用。
 
@@ -85,7 +96,7 @@ npm start
 
 浏览器打开 **http://localhost:3000** 即可使用。
 
-## 项目结构
+## 📁 项目结构
 
 ```
 chatbot/
@@ -110,7 +121,7 @@ chatbot/
 └── .gitignore
 ```
 
-## API 接口
+## 🔌 API 接口
 
 所有接口前缀：`/api`
 
@@ -128,7 +139,7 @@ chatbot/
 | POST | `/chat` | 流式对话 (SSE) | 是 |
 | POST | `/upload` | 文件上传与解析 | 是 |
 
-## 环境变量
+## ⚙️ 环境变量
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
@@ -137,7 +148,7 @@ chatbot/
 | JWT_SECRET | JWT 签名密钥 | chatbot-secret-key-2024 |
 | DATA_DIR | 数据持久化目录 | 系统临时目录 |
 
-## 文件上传支持
+## 📤 文件上传支持
 
 | 类型 | 扩展名 | 说明 |
 |------|--------|------|
@@ -147,7 +158,7 @@ chatbot/
 
 > 文件大小限制：10MB
 
-## 常见问题
+## ❓ 常见问题
 
 ### 前端请求 502 / 连接失败
 确保后端服务已启动（`npm run dev:server`），并检查 `server/.env` 中已正确配置 `DEEPSEEK_API_KEY`。
@@ -158,6 +169,13 @@ chatbot/
 ### 数据存储在哪里
 默认存储在系统临时目录下的 `deepseek-chat-data` 文件夹中，包含 `db.json`（用户/会话/消息数据）和 `uploads/`（上传文件缓存）。如需持久化，请设置 `DATA_DIR` 环境变量。
 
-## 许可证
+### 登录显示"网络错误"
+确保前端访问地址为 `http://localhost:5173`，而非直接访问后端地址。前端通过 Vite 代理转发 API 请求。
 
-MIT
+## 📄 许可证
+
+MIT License
+
+---
+
+⭐ 如果这个项目对你有帮助，请给个 Star！

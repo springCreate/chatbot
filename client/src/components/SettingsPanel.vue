@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 
 const props = defineProps({
-  model: { type: String, default: 'deepseek-chat' },
+  model: { type: String, default: 'deepseek-v4-pro' },
   temperature: { type: Number, default: 0.7 },
   maxTokens: { type: Number, default: 4096 },
   models: { type: Array, default: () => [] },

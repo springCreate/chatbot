@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, onMounted } from 'vue'
 import { useAuth } from './composables/useChat.js'
 import Login from './components/Login.vue'
@@ -66,6 +66,8 @@ function toggleTheme() {
     </div>
     <Login
       v-else-if="showLogin"
+      :on-login="handleLogin"
+      :on-register="handleRegister"
       @login="handleLogin"
       @register="handleRegister"
     />

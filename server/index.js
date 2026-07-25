@@ -100,7 +100,7 @@ const upload = multer({
     if (allowedExts.includes(ext) || Object.values(ALLOWED_EXTENSIONS).includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('File type not supported'));
+      cb(new Error('不支持的文件类型'));
     }
   },
 });
@@ -111,9 +111,9 @@ app.use(express.json({ limit: '10mb' }));
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Login required' });
+  if (!token) return res.status(401).json({ error: '请先登录' });
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
+    if (err) return res.status(403).json({ error: '登录已过期，请重新登录' });
     req.user = user;
     next();
   });
@@ -123,26 +123,26 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', hasKey: !!DEEPSEEK
 
 app.post('/api/register', async (req, res) => {
   const { username, password, email } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
   const db = loadDB();
-  if (db.users.find(u => u.username === username)) return res.status(400).json({ error: 'Username exists' });
+  if (db.users.find(u => u.username === username)) return res.status(400).json({ error: '用户名已存在' });
   try {
     const hashedPwd = await bcrypt.hash(password, 10);
     const newUser = { id: db.nextUserId++, username, email: email || '', password: hashedPwd, created_at: new Date().toISOString() };
     db.users.push(newUser);
-    if (!saveDB(db)) return res.status(500).json({ error: 'Save failed' });
+    if (!saveDB(db)) return res.status(500).json({ error: '保存失败' });
     res.status(201).json({ id: newUser.id, username: newUser.username });
-  } catch { res.status(500).json({ error: 'Register failed' }); }
+  } catch { res.status(500).json({ error: '注册失败' }); }
 });
 
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
   const db = loadDB();
   const user = db.users.find(u => u.username === username);
-  if (!user) return res.status(401).json({ error: 'Wrong username or password' });
+  if (!user) return res.status(401).json({ error: '用户名或密码错误' });
   const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ error: 'Wrong username or password' });
+  if (!match) return res.status(401).json({ error: '用户名或密码错误' });
   const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
   res.json({ token, username: user.username, userId: user.id });
 });
@@ -150,7 +150,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/me', authenticateToken, (req, res) => {
   const db = loadDB();
   const user = db.users.find(u => u.id === req.user.id);
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user) return res.status(404).json({ error: '用户不存在' });
   res.json({ id: user.id, username: user.username, email: user.email });
 });
 
@@ -162,7 +162,7 @@ app.get('/api/sessions', authenticateToken, (req, res) => {
 app.post('/api/sessions', authenticateToken, (req, res) => {
   const { title } = req.body;
   const db = loadDB();
-  const newSession = { id: db.nextSessionId++, user_id: req.user.id, title: title || 'New Session', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const newSession = { id: db.nextSessionId++, user_id: req.user.id, title: title || '新会话', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
   db.sessions.push(newSession);
   saveDB(db);
   res.json(newSession);
@@ -172,7 +172,7 @@ app.put('/api/sessions/:id', authenticateToken, (req, res) => {
   const { title } = req.body;
   const db = loadDB();
   const session = db.sessions.find(s => s.id === parseInt(req.params.id) && s.user_id === req.user.id);
-  if (!session) return res.status(404).json({ error: 'Session not found' });
+  if (!session) return res.status(404).json({ error: '会话不存在' });
   session.title = title;
   session.updated_at = new Date().toISOString();
   saveDB(db);
@@ -183,7 +183,7 @@ app.delete('/api/sessions/:id', authenticateToken, (req, res) => {
   const sessionId = parseInt(req.params.id);
   const db = loadDB();
   const idx = db.sessions.findIndex(s => s.id === sessionId && s.user_id === req.user.id);
-  if (idx === -1) return res.status(404).json({ error: 'Session not found' });
+  if (idx === -1) return res.status(404).json({ error: '会话不存在' });
   db.sessions.splice(idx, 1);
   db.messages = db.messages.filter(m => m.session_id !== sessionId);
   saveDB(db);
@@ -193,7 +193,7 @@ app.delete('/api/sessions/:id', authenticateToken, (req, res) => {
 app.get('/api/sessions/:id/messages', authenticateToken, (req, res) => {
   const db = loadDB();
   const sessionId = parseInt(req.params.id);
-  if (!db.sessions.find(s => s.id === sessionId && s.user_id === req.user.id)) return res.status(404).json({ error: 'Session not found' });
+  if (!db.sessions.find(s => s.id === sessionId && s.user_id === req.user.id)) return res.status(404).json({ error: '会话不存在' });
   res.json(db.messages.filter(m => m.session_id === sessionId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
 });
 
@@ -240,11 +240,11 @@ async function parseFile(filePath, ext, originalname) {
     }
     else { text = fs.readFileSync(filePath, 'utf-8'); }
     return { text: text.substring(0, 30000), fileType, images };
-  } catch (err) { throw new Error('Parse failed: ' + err.message); }
+  } catch (err) { throw new Error('文件解析失败: ' + err.message); }
 }
 
 app.post('/api/upload', authenticateToken, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Please select a file' });
+  if (!req.file) return res.status(400).json({ error: '请选择文件' });
   try {
     const ext = req.file.originalname.split('.').pop().toLowerCase();
     const { text, fileType, images } = await parseFile(req.file.path, ext, req.file.originalname);
@@ -261,8 +261,8 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
   res.on("close", function() { if (!res.writableEnded) controller.abort(); });
   try {
     const { session_id, messages, model = 'deepseek-v4-pro', temperature = 0.7, max_tokens = 4096 } = req.body;
-    if (!DEEPSEEK_API_KEY) return res.status(500).json({ error: 'API KEY not configured' });
-    if (!session_id || !Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'Invalid params' });
+    if (!DEEPSEEK_API_KEY) return res.status(500).json({ error: 'API 密钥未配置' });
+    if (!session_id || !Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: '参数无效' });
     const db = loadDB();
     const userMsg = messages[messages.length - 1];
     if (userMsg && userMsg.role === 'user') {
@@ -286,7 +286,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
       return { role: m.role, content: fullContent };
     });
     const response = await fetch(DEEPSEEK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + DEEPSEEK_API_KEY }, body: JSON.stringify({ model, messages: deepseekMessages, stream: true, temperature, max_tokens }), signal: controller.signal });
-    if (!response.ok) { let msg = 'API Error'; try { msg = (await response.json()).error?.message || msg; } catch {} res.write('data: ' + JSON.stringify({ error: msg }) + '\n\n'); return res.end(); }
+    if (!response.ok) { let msg = 'API 请求失败'; try { msg = (await response.json()).error?.message || msg; } catch {} res.write('data: ' + JSON.stringify({ error: msg }) + '\n\n'); return res.end(); }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '', fullContent = '';
@@ -298,7 +298,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
 
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
-app.get(/^\/(?!api).*/, function(req, res) { res.sendFile(path.join(clientDist, 'index.html'), function(err) { if (err) res.status(404).send('Build frontend first'); }); });
+app.get(/^\/(?!api).*/, function(req, res) { res.sendFile(path.join(clientDist, 'index.html'), function(err) { if (err) res.status(404).send('请先构建前端'); }); });
 
 app.listen(PORT, function() { console.log('Server started: http://localhost:' + PORT); console.log('Data dir: ' + USER_DATA_DIR); if (!DEEPSEEK_API_KEY) console.warn('DEEPSEEK_API_KEY not configured'); });
 
