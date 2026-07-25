@@ -28,84 +28,61 @@
 
 > **前置条件**：需要 [DeepSeek API Key](https://platform.deepseek.com/)，申请后复制备用。
 
-### 方式一：Docker（推荐，本地一点即开）
-
-确保已安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。
+### 1. 克隆仓库
 
 ```bash
 git clone https://github.com/springCreate/chatbot.git
 cd chatbot
-
-# Windows: copy server\.env.example server\.env
-# macOS/Linux: cp server/.env.example server/.env
-# 编辑 server/.env，填入 DeepSeek API Key
-
-docker compose up -d
 ```
 
-浏览器打开 **http://localhost:3000** 即可使用。
-
-### 方式二：使用预构建的 Docker 镜像（无需克隆仓库）
-
-GitHub Actions 每次推送会自动构建镜像并推送到 ghcr.io，任何人都可以直接运行：
+### 2. 配置环境变量
 
 ```bash
-docker run -d -p 3000:3000 -e DEEPSEEK_API_KEY=sk-your-key-here ghcr.io/springCreate/chatbot:latest
+# Windows
+copy server\.env.example server\.env
+
+# macOS / Linux
+# cp server/.env.example server/.env
 ```
 
-### 方式三：传统 Node 方式
+编辑 `server/.env`，填入你的 DeepSeek API Key：
+
+```env
+DEEPSEEK_API_KEY=sk-your-key-here
+```
+
+### 3. 安装依赖
 
 ```bash
 npm install
+npm --prefix server install
 npm --prefix client install
-npm --prefix client run build
+```
+
+### 4. 启动开发服务
+
+需要同时启动后端和前端两个终端：
+
+**终端 1 —— 后端（端口 3000）：**
+```bash
+npm run dev:server
+```
+
+**终端 2 —— 前端（端口 5173）：**
+```bash
+npm run dev:client
+```
+
+浏览器打开 **http://localhost:5173** 即可使用。前端 Vite 开发服务器会自动将 `/api` 请求代理到后端。
+
+### 5. 生产构建
+
+```bash
+npm run build
 npm start
 ```
 
-## 把本地服务分享给他人（Cloudflare Tunnel）
-
-不需要云服务器，也不需要任何平台授权。在你本地运行好 Docker 后，加一个 Cloudflare Tunnel 就能生成公开的 HTTPS 网址，直接把链接发给朋友即可访问。
-
-```bash
-# 启动服务 + 隧道（本地 + 公网同时生效）
-docker compose --profile tunnel up -d
-
-# 查看生成的公开网址
-docker compose logs tunnel
-# 输出中寻找:  https://xxxx.trycloudflare.com
-```
-
-整个过程无需注册任何账号，Cloudflare 在中国可正常访问，隧道流量走 Cloudflare 全球网络。
-
-> 如果 Tunnel URL 会随重启变化，你可以绑定自己的域名（需一个 Cloudflare 免费账号 + 域名），详情见 [Cloudflare Tunnel 文档](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)。
-
-## 部署到云服务器
-
-### 使用 Docker 部署到任意 VPS
-
-```bash
-docker run -d \
-  --name chatbot \
-  -p 80:3000 \
-  -e DEEPSEEK_API_KEY=sk-your-key-here \
-  -e JWT_SECRET=your-secret-here \
-  -v chatbot-data:/var/data \
-  ghcr.io/springCreate/chatbot:latest
-```
-
-之后访问 `http://你的服务器IP`。如需 HTTPS，用 Nginx 反向代理 + certbot。
-
-### 手动部署到 Render（备选）
-
-如果 Render 的 GitHub OAuth 流程可用，也可以手动创建 Web Service：
-
-1. 登录 [Render Dashboard](https://dashboard.render.com/)
-2. **New +** → **Web Service** → **Build and deploy from a Git repository**
-3. 配置：
-   - **Runtime**: Node
-   - **Build Command**: npm install && npm --prefix client install && npm --prefix client run build
-   - **Start Command**: node server/index.js
-4. 添加环境变量：DEEPSEEK_API_KEY、JWT_SECRET、NODE_ENV=production
+浏览器打开 **http://localhost:3000** 即可使用。
 
 ## 项目结构
 
@@ -127,13 +104,7 @@ chatbot/
 │   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
-├── Dockerfile                  # 多阶段 Docker 构建
-├── docker-compose.yml          # Docker 编排（含 Cloudflare Tunnel 配置）
-├── render.yaml                 # Render 云部署配置
-├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml              # 前端构建 + Docker 镜像验证
-│   │   └── docker-publish.yml  # 自动推送镜像到 ghcr.io
+├── package.json                # 根项目脚本
 └── .gitignore
 ```
 
@@ -158,11 +129,11 @@ chatbot/
 
 ## 常见问题
 
-### Docker 启动后页面空白
-确保 `server/.env` 文件存在且包含 `DEEPSEEK_API_KEY`。查看日志：`docker compose logs -f`。
+### 前端请求 502 / 连接失败
+确保后端服务已启动（`npm run dev:server`），并检查 `server/.env` 中已正确配置 `DEEPSEEK_API_KEY`。
 
 ### 端口被占用
-修改 `docker-compose.yml` 中的端口映射为其他端口（如 `"3001:3000"`）。
+修改 `server/.env` 中的 `PORT` 为其他值（如 3001），并同步更新 `client/vite.config.js` 中的代理目标端口。
 
 ## 许可证
 
