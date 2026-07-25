@@ -260,7 +260,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
   const controller = new AbortController();
   res.on("close", function() { if (!res.writableEnded) controller.abort(); });
   try {
-    const { session_id, messages, model = 'deepseek-chat', temperature = 0.7, max_tokens = 4096 } = req.body;
+    const { session_id, messages, model = 'deepseek-v4-pro', temperature = 0.7, max_tokens = 4096 } = req.body;
     if (!DEEPSEEK_API_KEY) return res.status(500).json({ error: 'API KEY not configured' });
     if (!session_id || !Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'Invalid params' });
     const db = loadDB();

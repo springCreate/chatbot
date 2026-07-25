@@ -1,6 +1,6 @@
-﻿import { ref, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3000' : ''
+const API_BASE = ''
 
 let token = localStorage.getItem('chatbot_token')
 
@@ -77,7 +77,7 @@ export function useChat() {
   let readerRef = null
   let stopped = false
   
-  async function sendMessage(sessionId, messageData, model = 'deepseek-chat', options = {}) {
+  async function sendMessage(sessionId, messageData, model = 'deepseek-v4-pro', options = {}) {
     if (loading.value) return
     const data = typeof messageData === 'string'
       ? { text: messageData, attachments: [] }

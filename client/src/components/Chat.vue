@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, nextTick, watch, onMounted } from 'vue'
 import { useChat, useSessions, useUpload } from '../composables/useChat.js'
 import ChatMessage from './ChatMessage.vue'
@@ -19,14 +19,14 @@ const { uploadFile } = useUpload()
 
 const currentSession = ref(null)
 const scrollRef = ref(null)
-const model = ref('deepseek-chat')
+const model = ref('deepseek-v4-pro')
 const temperature = ref(0.7)
 const maxTokens = ref(4096)
 const sidebarOpen = ref(true)
 
 const models = [
-  { value: 'deepseek-chat', label: 'DeepSeek-V3' },
-  { value: 'deepseek-reasoner', label: 'DeepSeek-R1' },
+  { value: 'deepseek-v4-pro', label: 'DeepSeek-V4 Pro' },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek-V4 Flash' },
 ]
 
 async function scrollToBottom() {

@@ -1,15 +1,16 @@
-﻿# DeepSeek 智能聊天助手
+# DeepSeek 智能聊天助手
 
 基于 DeepSeek 大模型 API 的全栈智能聊天应用，支持流式输出、Markdown 渲染、文件上传与图片 OCR 识别。
 
 ## 功能特性
 
-- **AI 对话**：接入 DeepSeek-V3 与 DeepSeek-R1 模型，SSE 流式输出
+- **AI 对话**：接入 DeepSeek-V4 Pro 与 DeepSeek-V4 Flash 模型，SSE 流式输出
 - **文件解析**：上传 PDF、Word、Excel、图片等文件，自动提取文字内容
 - **图片 OCR**：上传图片自动识别中英文文字
 - **多轮对话**：保留上下文记忆，支持连续追问
 - **Markdown 渲染**：代码高亮、表格、列表完整展示
-- **用户认证**：注册/登录系统，会话数据隔离
+- **用户认证**：注册/登录系统，JWT 鉴权，会话数据隔离
+- **会话管理**：多会话创建、重命名、删除，消息持久化存储
 - **响应式布局**：桌面与移动端自适应
 - **主题切换**：暗色/亮色主题自由切换
 
@@ -19,10 +20,12 @@
 |------|------|
 | 前端 | Vue 3 + Vite |
 | 后端 | Node.js + Express |
-| 模型 | DeepSeek API |
+| 认证 | JWT (jsonwebtoken) + bcryptjs |
+| 模型 | DeepSeek API (流式 SSE) |
 | 渲染 | marked + highlight.js |
 | OCR | Tesseract.js |
-| 文件解析 | pdf-parse, mammoth, xlsx |
+| 文件解析 | pdf-parse, mammoth, xlsx, docx |
+| 数据存储 | JSON 文件 (db.json) |
 
 ## 快速上手
 
@@ -54,9 +57,7 @@ DEEPSEEK_API_KEY=sk-your-key-here
 ### 3. 安装依赖
 
 ```bash
-npm install
-npm --prefix server install
-npm --prefix client install
+npm run install:all
 ```
 
 ### 4. 启动开发服务
@@ -89,14 +90,14 @@ npm start
 ```
 chatbot/
 ├── server/                     # Express 后端
-│   ├── index.js                # 服务入口 + DeepSeek 流式代理 + 文件解析
+│   ├── index.js                # 服务入口 + DeepSeek 流式代理 + 文件解析 + 认证
 │   ├── package.json
 │   ├── .env                    # API 密钥（不提交 Git）
 │   └── .env.example            # 配置模板
 ├── client/                     # Vue 3 前端
 │   ├── src/
-│   │   ├── components/         # Chat / ChatInput / ChatMessage / SettingsPanel
-│   │   ├── composables/        # useChat / useAuth / useSessions
+│   │   ├── components/         # Chat / ChatInput / ChatMessage / Login / SessionList / SettingsPanel
+│   │   ├── composables/        # useChat (含 useAuth / useSessions / useUpload)
 │   │   ├── utils/              # Markdown 渲染 + OCR 工具
 │   │   ├── App.vue
 │   │   ├── main.js
@@ -105,8 +106,27 @@ chatbot/
 │   ├── package.json
 │   └── vite.config.js
 ├── package.json                # 根项目脚本
+├── README.md
 └── .gitignore
 ```
+
+## API 接口
+
+所有接口前缀：`/api`
+
+| 方法 | 路径 | 说明 | 鉴权 |
+|------|------|------|------|
+| GET | `/health` | 健康检查 | 否 |
+| POST | `/register` | 用户注册 | 否 |
+| POST | `/login` | 用户登录 | 否 |
+| GET | `/me` | 获取当前用户信息 | 是 |
+| GET | `/sessions` | 获取会话列表 | 是 |
+| POST | `/sessions` | 创建会话 | 是 |
+| PUT | `/sessions/:id` | 更新会话标题 | 是 |
+| DELETE | `/sessions/:id` | 删除会话 | 是 |
+| GET | `/sessions/:id/messages` | 获取会话消息 | 是 |
+| POST | `/chat` | 流式对话 (SSE) | 是 |
+| POST | `/upload` | 文件上传与解析 | 是 |
 
 ## 环境变量
 
@@ -134,6 +154,9 @@ chatbot/
 
 ### 端口被占用
 修改 `server/.env` 中的 `PORT` 为其他值（如 3001），并同步更新 `client/vite.config.js` 中的代理目标端口。
+
+### 数据存储在哪里
+默认存储在系统临时目录下的 `deepseek-chat-data` 文件夹中，包含 `db.json`（用户/会话/消息数据）和 `uploads/`（上传文件缓存）。如需持久化，请设置 `DATA_DIR` 环境变量。
 
 ## 许可证
 
