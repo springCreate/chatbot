@@ -79,15 +79,30 @@ export function useChat() {
   
   async function sendMessage(sessionId, messageData, model = 'deepseek-v4-pro', options = {}) {
     if (loading.value) return
-    const data = typeof messageData === 'string'
-      ? { text: messageData, attachments: [] }
-      : (messageData || { text: '', attachments: [] })
-    const text = (data.text || '').trim()
-    const attachments = Array.isArray(data.attachments) ? data.attachments : []
-    if (!text && attachments.length === 0) return
+    const isRegenerate = !!options.regenerate
 
-    const userMessage = { role: 'user', content: text, attachments }
-    messages.value.push(userMessage)
+    if (!isRegenerate) {
+      const data = typeof messageData === 'string'
+        ? { text: messageData, attachments: [] }
+        : (messageData || { text: '', attachments: [] })
+      const text = (data.text || '').trim()
+      const attachments = Array.isArray(data.attachments) ? data.attachments : []
+      if (!text && attachments.length === 0) return
+
+      const userMessage = { role: 'user', content: text, attachments }
+      messages.value.push(userMessage)
+    } else {
+      // 重新生成：复用最后一条用户消息，并移除最近一条 AI 回答
+      const lastUser = [...messages.value].reverse().find((m) => m.role === 'user')
+      if (!lastUser) return
+      for (let i = messages.value.length - 1; i >= 0; i--) {
+        if (messages.value[i].role === 'assistant') {
+          messages.value.splice(i, 1)
+          break
+        }
+      }
+    }
+
     loading.value = true
     error.value = ''
     stopped = false
@@ -105,14 +120,14 @@ export function useChat() {
       }
       return { role: m.role, content: fullContent, attachments: mAtts }
     })
-    
+
     const aiMessage = reactive({ role: 'assistant', content: '' })
     messages.value.push(aiMessage)
-    
+
     try {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
-      
+
       const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers,
@@ -122,6 +137,7 @@ export function useChat() {
           model,
           temperature: options.temperature || 0.7,
           max_tokens: options.maxTokens || 4096,
+          regenerate: isRegenerate,
         }),
       })
       
@@ -183,7 +199,12 @@ export function useChat() {
     messages.value = []
     error.value = ''
   }
-  
+
+  // 重新生成最近一条 AI 回答：复用最后一条用户消息重新请求
+  function regenerate(sessionId, model = 'deepseek-v4-pro', options = {}) {
+    return sendMessage(sessionId, null, model, { ...options, regenerate: true })
+  }
+
   async function loadMessages(sessionId) {
     const headers = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
@@ -200,7 +221,7 @@ export function useChat() {
     return res.ok
   }
   
-  return { messages, loading, error, sendMessage, stop, clearMessages, loadMessages }
+  return { messages, loading, error, sendMessage, stop, clearMessages, loadMessages, regenerate }
 }
 
 export function useSessions() {

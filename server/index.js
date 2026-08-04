@@ -260,12 +260,12 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
   const controller = new AbortController();
   res.on("close", function() { if (!res.writableEnded) controller.abort(); });
   try {
-    const { session_id, messages, model = 'deepseek-v4-pro', temperature = 0.7, max_tokens = 4096 } = req.body;
+    const { session_id, messages, model = 'deepseek-v4-pro', temperature = 0.7, max_tokens = 4096, regenerate = false } = req.body;
     if (!DEEPSEEK_API_KEY) return res.status(500).json({ error: 'API 密钥未配置' });
     if (!session_id || !Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: '参数无效' });
     const db = loadDB();
     const userMsg = messages[messages.length - 1];
-    if (userMsg && userMsg.role === 'user') {
+    if (!regenerate && userMsg && userMsg.role === 'user') {
       const cleanContent = (userMsg.content || "").replace(/\[附件:[\s\S]*?(?=\[附件:|$)/g, "").trim();
       const attachmentsToSave = (userMsg.attachments || []).map(function(a) { return { name: a.name, size: a.size, type: a.type, fileType: a.fileType, content: a.content, images: a.images || [] }; });
       db.messages.push({ id: db.nextMessageId++, session_id, role: 'user', content: cleanContent, attachments: attachmentsToSave, created_at: new Date().toISOString() });
@@ -291,7 +291,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '', fullContent = '';
     while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (!t || !t.startsWith('data:')) continue; const d = t.slice(5).trim(); if (d === '[DONE]') { res.write('data: [DONE]\n\n'); continue; } try { const p = JSON.parse(d); const c = p.choices?.[0]?.delta?.content; if (c) { fullContent += c; res.write('data: ' + JSON.stringify({ content: c }) + '\n\n'); } } catch {} } }
-    if (fullContent) { const db2 = loadDB(); db2.messages.push({ id: db2.nextMessageId++, session_id, role: 'assistant', content: fullContent, attachments: [], created_at: new Date().toISOString() }); saveDB(db2); }
+    if (fullContent) { const db2 = loadDB(); if (regenerate) { for (let i = db2.messages.length - 1; i >= 0; i--) { if (db2.messages[i].session_id === session_id && db2.messages[i].role === 'assistant') { db2.messages.splice(i, 1); break; } } } db2.messages.push({ id: db2.nextMessageId++, session_id, role: 'assistant', content: fullContent, attachments: [], created_at: new Date().toISOString() }); saveDB(db2); }
     res.end();
   } catch (err) { if (err.name === 'AbortError') { res.write('data: [DONE]\n\n'); return res.end(); } try { res.write('data: ' + JSON.stringify({ error: err.message }) + '\n\n'); } catch {} res.end(); }
 });

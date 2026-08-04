@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, watch, onMounted } from 'vue'
+import { ref, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useChat, useSessions, useUpload } from '../composables/useChat.js'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'
@@ -13,7 +13,7 @@ const props = defineProps({
 
 const emit = defineEmits(['logout', 'toggleTheme'])
 
-const { messages, loading, error, sendMessage, stop, clearMessages, loadMessages } = useChat()
+const { messages, loading, error, sendMessage, stop, clearMessages, loadMessages, regenerate } = useChat()
 const { sessions, fetchSessions, createSession, updateSession, deleteSession } = useSessions()
 const { uploadFile } = useUpload()
 
@@ -23,6 +23,10 @@ const model = ref('deepseek-v4-pro')
 const temperature = ref(0.7)
 const maxTokens = ref(4096)
 const sidebarOpen = ref(true)
+
+// 危险操作二次确认：清空会话
+const clearConfirming = ref(false)
+let clearConfirmTimer = null
 
 const models = [
   { value: 'deepseek-v4-pro', label: 'DeepSeek-V4 Pro' },
@@ -61,6 +65,9 @@ async function handleCreateSession() {
 }
 
 async function handleSelectSession(session) {
+  // 切换会话时重置危险操作确认态，避免状态污染
+  clearConfirming.value = false
+  clearTimeout(clearConfirmTimer)
   currentSession.value = session
   messages.value = []
   await loadMessages(session.id)
@@ -91,9 +98,28 @@ async function handleUpload(file, resolve, reject) {
 }
 
 function handleClear() {
-  if (currentSession.value) {
-    clearMessages()
+  if (!currentSession.value) return
+  // 两段式确认：首次点击进入确认态，3 秒内再次点击才执行
+  if (!clearConfirming.value) {
+    clearConfirming.value = true
+    clearTimeout(clearConfirmTimer)
+    clearConfirmTimer = setTimeout(() => {
+      clearConfirming.value = false
+    }, 3000)
+    return
   }
+  clearConfirming.value = false
+  clearTimeout(clearConfirmTimer)
+  clearMessages()
+}
+
+// 重新生成最近一条 AI 回答
+function handleRegenerate() {
+  if (!currentSession.value || loading.value) return
+  regenerate(currentSession.value.id, model.value, {
+    temperature: temperature.value,
+    maxTokens: maxTokens.value,
+  })
 }
 
 onMounted(async () => {
@@ -102,6 +128,10 @@ onMounted(async () => {
     currentSession.value = sessions.value[0]
     await loadMessages(currentSession.value.id)
   }
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(clearConfirmTimer)
 })
 </script>
 
@@ -163,8 +193,14 @@ onMounted(async () => {
             @toggleTheme="emit('toggleTheme')"
           />
 
-          <button class="clear-btn" @click="handleClear" :disabled="loading">
-            清空
+          <button
+            class="clear-btn"
+            :class="{ confirming: clearConfirming }"
+            @click="handleClear"
+            :disabled="loading"
+            :title="clearConfirming ? '再次点击以确认清空当前会话所有消息' : '清空当前会话'"
+          >
+            {{ clearConfirming ? '确认清空？' : '清空' }}
           </button>
         </div>
       </header>
@@ -193,6 +229,8 @@ onMounted(async () => {
           :key="msg.id || i"
           :message="msg"
           :streaming="loading && i === messages.length - 1 && msg.role === 'assistant'"
+          :is-last="i === messages.length - 1"
+          @regenerate="handleRegenerate"
         />
 
         <div v-if="error" class="error-tip">⚠ {{ error }}</div>
@@ -360,11 +398,24 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 7px 14px;
   font-size: 13px;
+  transition: all 0.2s;
 }
 
-.clear-btn:hover:not(:disabled) {
+.clear-btn:hover:not(:disabled):not(.confirming) {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+.clear-btn.confirming {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+  animation: pulseDanger 1s ease-in-out infinite;
+}
+
+@keyframes pulseDanger {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .chat-area {

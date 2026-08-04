@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   sessions: { type: Array, default: () => [] },
@@ -10,6 +10,20 @@ const emit = defineEmits(['select', 'delete', 'rename'])
 
 const editingId = ref(null)
 const editingTitle = ref('')
+
+// 危险操作二次确认：删除会话
+const deletingId = ref(null)
+let deleteConfirmTimer = null
+
+// 当前会话变化时，重置删除确认态，避免状态污染
+watch(() => props.current?.id, () => {
+  deletingId.value = null
+  clearTimeout(deleteConfirmTimer)
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(deleteConfirmTimer)
+})
 
 function startEdit(session) {
   editingId.value = session.id
@@ -25,6 +39,21 @@ function saveEdit(session) {
 
 function cancelEdit() {
   editingId.value = null
+}
+
+// 两段式确认：首次点击进入确认态，3 秒内再次点击才真正删除
+function clickDelete(session) {
+  if (deletingId.value !== session.id) {
+    deletingId.value = session.id
+    clearTimeout(deleteConfirmTimer)
+    deleteConfirmTimer = setTimeout(() => {
+      deletingId.value = null
+    }, 3000)
+    return
+  }
+  deletingId.value = null
+  clearTimeout(deleteConfirmTimer)
+  emit('delete', session.id)
 }
 
 function formatDate(dateStr) {
@@ -79,10 +108,12 @@ function formatDate(dateStr) {
         </button>
         <button
           class="action-btn delete"
-          @click.stop="emit('delete', session.id)"
-          title="删除"
+          :class="{ confirming: deletingId === session.id }"
+          @click.stop="clickDelete(session)"
+          :title="deletingId === session.id ? '再次点击确认删除（3 秒内有效）' : '删除'"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <span v-if="deletingId === session.id" class="confirm-text">确认</span>
+          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -214,6 +245,25 @@ function formatDate(dateStr) {
 
 .action-btn.delete:hover {
   color: var(--danger);
+}
+
+.action-btn.delete.confirming {
+  background: var(--danger);
+  color: #fff;
+  width: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: pulseDanger 1s ease-in-out infinite;
+}
+
+.action-btn.delete.confirming .confirm-text {
+  white-space: nowrap;
+}
+
+@keyframes pulseDanger {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 </style>
 
