@@ -28,7 +28,8 @@
   <a href="#-快速开始">🚀 快速开始</a> ·
   <a href="#-项目结构">📁 结构</a> ·
   <a href="#-api-接口">🔌 API</a> ·
-  <a href="#-常见问题">❓ FAQ</a>
+  <a href="#-常见问题">❓ FAQ</a> ·
+  <a href="docs/PRD.md">📋 PRD</a>
 </p>
 
 <br>
